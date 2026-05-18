@@ -131,14 +131,16 @@ st.markdown(f"""
   .score-hero .grade {{ font-size: 2.2rem; font-weight: 800; }}
   .score-hero p {{ color: #90caf9; margin: 4px 0 0; font-size: 0.9rem; }}
 
-  /* ── Section header — visible on both light + dark backgrounds ── */
+  /* ── Section header — solid pill, visible on light + dark ── */
   .section-header {{
-    font-size: 1.15rem; font-weight: 800; color: #ffffff;
-    background: linear-gradient(90deg, #0077b6 0%, #00b4d8 60%, transparent 100%);
-    padding: 8px 20px 8px 14px;
-    border-radius: 8px;
+    display: inline-block;
+    font-size: 1.1rem; font-weight: 800; color: #ffffff;
+    background: #0077b6;
+    padding: 6px 18px 6px 12px;
+    border-radius: 6px;
     margin-bottom: 18px;
     letter-spacing: 0.01em;
+    border-left: 4px solid #00b4d8;
   }}
 
   /* ── Alert badges ── */
@@ -171,7 +173,7 @@ st.markdown(f"""
     min-width: 36px;
   }}
   .roadmap-loc {{ font-weight: 700; color: {PALETTE['dark']}; font-size: 0.95rem; }}
-  .roadmap-action {{ color: #475569; font-size: 0.85rem; }}
+  .roadmap-action {{ color: #334155; font-size: 0.85rem; font-weight: 500; }}
   .roadmap-aed {{
     margin-left: auto;
     background: {PALETTE['light']};
@@ -459,7 +461,7 @@ CHART_LAYOUT = dict(
     paper_bgcolor="white",
     plot_bgcolor="#f8fbff",
     margin=dict(l=12, r=12, t=36, b=12),
-    font=dict(family="Inter, Arial, sans-serif", size=12),
+    font=dict(family="Inter, Arial, sans-serif", size=12, color="#1e293b"),
 )
 
 # ════════════════════════════════════════════
@@ -708,7 +710,9 @@ if page == "📊 Overview Dashboard":
     )
     fig_heat.update_layout(**CHART_LAYOUT, height=280,
                            coloraxis_colorbar=dict(title="Δ%", thickness=14))
-    fig_heat.update_traces(textfont=dict(size=11))
+    fig_heat.update_traces(textfont=dict(size=11, color="#ffffff"))
+    fig_heat.update_xaxes(tickfont=dict(color="#1e293b", size=12))
+    fig_heat.update_yaxes(tickfont=dict(color="#1e293b", size=12))
     st.plotly_chart(fig_heat, use_container_width=True)
 
     st.markdown("---")
@@ -938,7 +942,8 @@ elif page == "🔍 Leak Detection":
         labels=dict(color="Severity"),
     )
     fig_tl.update_layout(**CHART_LAYOUT, height=240,
-                         xaxis=dict(tickangle=-45),
+                         xaxis=dict(tickangle=-45, tickfont=dict(color="#1e293b", size=10)),
+                         yaxis=dict(tickfont=dict(color="#1e293b", size=12)),
                          coloraxis_colorbar=dict(
                              tickvals=[0,1,2,3,4],
                              ticktext=["Normal","Monitor","High","Leak","Priority"],
@@ -1583,3 +1588,4 @@ Upload a CSV or Excel file from the sidebar. Your file must contain these column
 | 45–57 | D | Poor |
 | 0–44 | F | Critical |
         """)
+
