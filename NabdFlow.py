@@ -1,20 +1,6 @@
 """
-NabdFlow v2.0 – AI-Powered Water Intelligence
+NabdFlow – AI-Powered Water Intelligence
 University Campus Facility Management Dashboard
-2026 Edition
-
-New in v2:
-  • Sustainability Score (0–100 with A+–F grade) — headline campus metric
-  • CO₂ equivalent calculations (UAE desalination context)
-  • 7-day demand forecast with confidence bands
-  • Location × Time-Period heatmap for instant anomaly mapping
-  • Efficiency ranking — L/person (occupancy-adjusted)
-  • UAE benchmark comparison
-  • Alert confidence scoring on leak detection
-  • Alert timeline heatmap (Date × Location)
-  • Savings Roadmap — ranked, actionable, AED-quantified
-  • Global sidebar filters (date range + location)
-  • Week-over-week trend arrows on KPIs
 """
 
 import streamlit as st
@@ -30,7 +16,7 @@ import io
 # PAGE CONFIG
 # ════════════════════════════════════════════
 st.set_page_config(
-    page_title="NabdFlow v2 – Water Intelligence",
+    page_title="NabdFlow – Water Intelligence",
     page_icon="💧",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -145,9 +131,15 @@ st.markdown(f"""
   .score-hero .grade {{ font-size: 2.2rem; font-weight: 800; }}
   .score-hero p {{ color: #90caf9; margin: 4px 0 0; font-size: 0.9rem; }}
 
-  /* ── Section header ── */
-  .section-header {{
-    font-size: 1.3rem; font-weight: 800; color: {PALETTE['dark']};
+  /* ── Section header — visible on both light + dark backgrounds ── */
+  .section-header {
+    font-size: 1.15rem; font-weight: 800; color: #ffffff;
+    background: linear-gradient(90deg, #0077b6 0%, #00b4d8 60%, transparent 100%);
+    padding: 8px 20px 8px 14px;
+    border-radius: 8px;
+    margin-bottom: 18px;
+    letter-spacing: 0.01em;
+  };
     padding-bottom: 6px;
     border-bottom: 3px solid {PALETTE['secondary']};
     margin-bottom: 18px;
@@ -479,7 +471,7 @@ CHART_LAYOUT = dict(
 # ════════════════════════════════════════════
 with st.sidebar:
     st.markdown("## 💧 NabdFlow")
-    st.markdown("*AI Water Intelligence · v2.0*")
+    st.markdown("*AI-Powered Water Intelligence*")
     st.markdown("---")
 
     page = st.radio(
@@ -544,7 +536,7 @@ with st.sidebar:
     sel_locs = st.multiselect("Locations", all_locs, default=all_locs)
     st.markdown("---")
     st.caption("University Facility Manager Tool")
-    st.caption("NabdFlow 2026 · Sustainability Competition")
+    st.caption("NabdFlow · Campus Water Intelligence")
 
 # Apply global filters
 if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
@@ -1396,7 +1388,7 @@ SUSTAINABILITY ALIGNMENT
   UAE Quality of Life Strategy
 
 {"="*60}
-NabdFlow v2.0 · University Campus Water Intelligence
+NabdFlow · University Campus Water Intelligence
 """
 
     report_csv_df = pd.DataFrame({
@@ -1437,7 +1429,7 @@ NabdFlow v2.0 · University Campus Water Intelligence
 # PAGE 6 — ABOUT
 # ════════════════════════════════════════════════════════════════════
 elif page == "ℹ️ About NabdFlow":
-    section("ℹ️ About NabdFlow v2.0")
+    section("ℹ️ About NabdFlow")
     st.markdown("---")
 
     col_main, col_side = st.columns([2, 1])
@@ -1446,109 +1438,153 @@ elif page == "ℹ️ About NabdFlow":
         st.markdown("""
 ### 💧 What is NabdFlow?
 
-NabdFlow is a **campus-level water intelligence platform** designed for university facility managers.
-It transforms meter readings and facility records into actionable insights — helping institutions move
-from **reactive maintenance to proactive water stewardship**.
+**NabdFlow** is a smart water management dashboard built specifically for university facility managers.
+It takes raw water usage data — from meter readings, facility logs, or manual records — and turns it
+into clear, actionable intelligence.
 
 > *"Nabd" (نبض) means pulse in Arabic. NabdFlow monitors the pulse of your campus water systems.*
 
----
-
-### 🆕 What's New in v2.0
-
-| Feature | Description |
-|---------|-------------|
-| **Sustainability Score** | 0–100 campus health index with A+–F grade |
-| **CO₂ Calculations** | Water waste converted to carbon impact (UAE desalination context) |
-| **7-Day Forecast** | Linear trend projection with confidence bands |
-| **Anomaly Heatmap** | Location × Time-Period visual anomaly map |
-| **Z-Score Detection** | Statistical anomaly scoring alongside rule-based alerts |
-| **Efficiency Ranking** | L/person occupancy-adjusted benchmark |
-| **UAE Benchmark** | Compare against 180 L/person/day national average |
-| **Alert Confidence** | Very High / High / Medium / Low confidence per alert |
-| **Alert Timeline** | Date × Location severity heatmap |
-| **Savings Roadmap** | Ranked recommendations by AED impact |
-| **Global Filters** | Date range + location filter across all pages |
-| **CO₂ in Report** | Environmental impact integrated into impact report |
+The goal is simple: **help you detect waste, prevent leaks, and save money** — before problems become expensive.
+NabdFlow works with data you already have. No new hardware or sensors are required.
 
 ---
 
-### 🔢 Methodology
+### 🗂️ How the App Works — Page by Page
+
+**📊 Overview Dashboard**
+Your daily control room. The moment you open this page you see the Campus Sustainability Score
+(a 0–100 index graded A+ to F), total water consumed vs expected, avoidable waste in litres,
+estimated cost savings in AED, and the CO₂ footprint of that waste. Below the score, eight KPI cards
+give a quick health check of the entire campus. The daily trend chart shows actual usage alongside
+the expected baseline, a 7-day rolling average, and a 7-day forward forecast. The heatmap at the
+bottom instantly shows you *which location* and *which time of day* has the biggest anomalies —
+red means consistent overuse, green means efficient.
+
+**📍 Location Analysis**
+A deep dive into each campus zone. Every location is ranked by water efficiency using
+litres-per-person (occupancy-adjusted) — not just raw volume — so a busy cafeteria is
+fairly compared to a quiet admin block. A benchmark bar shows how each location compares
+against the UAE university average of 180 L/person/day. The summary table shows total usage,
+expected usage, avoidable excess, AED savings opportunity, CO₂ equivalent, and alert count
+side by side for all locations.
+
+**🔍 Leak Detection**
+The alert intelligence centre. Every reading is classified into one of five categories based
+on how far actual usage exceeds expected. The alert timeline heatmap shows the full date
+range across all locations so you can instantly spot recurring problems. A priority action
+table at the bottom tells you *exactly* what to do at each location, ranked from urgent to low.
+Each alert also carries a confidence score (Very High / High / Medium / Low) calculated from
+both the percentage deviation and the statistical Z-score, so you know which alerts are
+genuinely abnormal vs random noise.
+
+**🤖 AI Recommendations**
+Data-driven action plan generated automatically from the uploaded data. Recommendations are
+ranked by estimated AED impact — the highest-value actions appear first. Each card explains
+the problem, the likely cause, and a specific corrective step. Examples include scheduling
+irrigation at cooler hours, replacing faulty flush valves, adding shut-off timers for night-time
+lines, and training cafeteria staff on water-conscious practices.
+
+**📄 Impact Report**
+A clean, presentation-ready summary for management or sustainability reporting. Shows the
+campus score, all key figures, CO₂ equivalent savings, UAE benchmark comparison, and full
+SDG + UAE strategy alignment. You can adjust the reduction target, pilot duration, and
+number of people reached — the projections update instantly. Download as TXT or CSV.
+
+---
+
+### 🔔 Alert System Explained
+
+| Level | Trigger | What it Means |
+|-------|---------|---------------|
+| ✅ Normal | 0–15% above expected | Acceptable variation |
+| 🟡 Monitor | 15–25% above expected | Worth watching; check if it persists |
+| 🔴 High Usage | ≥25% above expected | Investigate root cause promptly |
+| 🔵 Possible Leak | ≥25% above expected at **Night** | Low occupancy + high flow = leak signal |
+| 🟣 Priority Inspection | High Usage at same location on **2+ days** | Persistent fault — act immediately |
+
+---
+
+### 🔢 How the Numbers Are Calculated
 
 | Metric | Formula |
 |--------|---------|
-| Excess Usage | Actual − Expected |
-| Avoidable Excess | max(Excess, 0) |
-| Difference % | (Actual − Expected) / Expected × 100 |
-| AED Savings | Avoidable (L) ÷ 1,000 × AED 4.50 |
-| CO₂ Equivalent | Avoidable (m³) × 0.65 kg (UAE grid factor) |
-| Usage / Person | Actual ÷ Occupancy Count |
-| Z-Score | (x − μ) / σ within Location × Time group |
+| Avoidable Excess | max(Actual − Expected, 0) |
+| AED Savings | Avoidable Excess ÷ 1,000 × AED 4.50 per m³ |
+| CO₂ Equivalent | Avoidable Excess (m³) × 0.65 kg |
+| Usage per Person | Actual Usage ÷ Occupancy Count |
+| Sustainability Score | 100 × (1 − weighted alert sum ÷ maximum possible) |
+| Alert Confidence | Combines % deviation + statistical Z-score |
 
-**Sustainability Score:**
-Weighted across all readings: Normal=0, Monitor=1, High=2, Leak=3, Priority=4.
-Score = 100 × (1 − weighted_sum / max_possible).
-
-**Alert Thresholds:**
-- 0–15% → Normal Variation
-- 15–25% → Monitor
-- ≥25% → High Usage Alert
-- ≥25% + Night → Possible Leak
-- ≥25% on ≥2 days, same location → Priority Inspection
+**CO₂ note:** UAE relies heavily on energy-intensive desalination (~1.0 kWh/m³).
+Using the national grid emission factor of ~0.65 kg CO₂/kWh, every wasted cubic metre
+of water carries an estimated 0.65 kg CO₂ footprint. These are indicative values for
+awareness and reporting — not certified emissions figures.
 
 ---
 
-### 🌍 Strategic Alignment
+### 🌍 What NabdFlow Supports
 
-- **SDG 6** – Clean Water and Sanitation
-- **SDG 12** – Responsible Consumption and Production
-- **UAE Water Security Strategy 2036** (26% efficiency improvement target)
-- **UAE Smart Water Management Direction**
-- **UAE Quality of Life and Sustainable Communities**
+| Framework | How NabdFlow Contributes |
+|-----------|-------------------------|
+| **SDG 6** – Clean Water & Sanitation | Detects and reduces institutional water waste |
+| **SDG 12** – Responsible Consumption | Quantifies overconsumption and drives efficiency |
+| **UAE Water Security Strategy 2036** | Supports the 26% efficiency target for public facilities |
+| **UAE Smart Water Management** | Enables data-driven decisions without new infrastructure |
+| **UAE Quality of Life Strategy** | Improves campus environment and community awareness |
 
 ---
 
-### ⚠️ Important Notes
+### 📁 How to Use Your Own Data
 
-NabdFlow is **not a replacement** for smart metering infrastructure.
-It is a **campus intelligence layer** that works with existing data — no hardware required.
-CO₂ factors are indicative estimates based on UAE desalination energy intensity (~1.0 kWh/m³)
-and the national grid emission factor (~0.65 kg CO₂/kWh).
+Upload a CSV or Excel file from the sidebar. Your file must contain these columns:
+
+| Column | What to put in it |
+|--------|------------------|
+| `Date` | Date of the reading (e.g. 2024-09-01) |
+| `Location` | Name of the campus area |
+| `Time_Period` | Morning / Afternoon / Evening / Night |
+| `Actual_Usage_Litres` | What the meter actually recorded |
+| `Expected_Usage_Litres` | The normal/baseline for that location and time |
+| `Occupancy_Count` | Approximate number of people present |
+| `Notes` | Any relevant notes (can be left blank) |
         """)
 
     with col_side:
         st.markdown("### 📌 Quick Reference")
-        st.info("**Version:** 2.0")
-        st.info("**User:** Facility Manager")
+        st.info("**Target User:** Facility Manager")
         st.info("**Cost Rate:** AED 4.50 / m³")
         st.info("**CO₂ Factor:** 0.65 kg / m³")
         st.info("**UAE Benchmark:** 180 L/p/day")
         st.info("**Pilot Duration:** 4–8 weeks")
-        st.success("**Open Source:** Yes")
+        st.success("**No Hardware Required**")
 
-        st.markdown("### 🔧 Tech Stack")
+        st.markdown("### 🔧 Built With")
         st.markdown("""
-- 🐍 Python 3.11+
-- 📊 Streamlit 1.32+
+- 🐍 Python
+- 📊 Streamlit
 - 🐼 Pandas / NumPy
-- 📈 Plotly 5.x
+- 📈 Plotly
         """)
 
-        st.markdown("### 🚀 Roadmap")
+        st.markdown("### 🚀 Future Enhancements")
         st.markdown("""
-Future releases:
-- IoT / smart meter API connector
+- IoT / smart meter connector
 - Arabic language interface
 - Predictive ML anomaly model
 - Multi-campus dashboard
-- WhatsApp alert integration
+- WhatsApp / email alerts
 - PDF report export
         """)
 
-        st.markdown("### 🏆 Competition")
+        st.markdown("### 📊 Scoring Guide")
         st.markdown("""
-Built for the **UAE University Sustainability Competition**.
-Addressing water scarcity in alignment with
-UAE Vision 2031 and the national commitment to
-water security in an arid-zone context.
+| Score | Grade | Status |
+|-------|-------|--------|
+| 88–100 | A+ | Excellent |
+| 78–87 | A | Very Good |
+| 68–77 | B | Good |
+| 58–67 | C | Fair |
+| 45–57 | D | Poor |
+| 0–44 | F | Critical |
         """)
+
