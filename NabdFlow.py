@@ -67,7 +67,13 @@ st.markdown(f"""
 <style>
   /* ── Base ── */
   .main {{ background: {PALETTE['bg']}; }}
-  .block-container {{ padding-top: 1.5rem; padding-bottom: 2rem; }}
+  .block-container {{ padding-top: 2.8rem !important; padding-bottom: 2rem; }}
+
+  /* ── Ensure caption / small text is readable in Streamlit dark mode ── */
+  .stCaption p, [data-testid="stCaptionContainer"] p,
+  div[data-testid="stCaptionContainer"] span {{
+    color: #94a3b8 !important;
+  }}
 
   /* ── Sidebar ── */
   section[data-testid="stSidebar"] {{
@@ -133,14 +139,15 @@ st.markdown(f"""
 
   /* ── Section header — solid pill, visible on light + dark ── */
   .section-header {{
-    display: inline-block;
+    display: block;
     font-size: 1.1rem; font-weight: 800; color: #ffffff;
-    background: #0077b6;
-    padding: 6px 18px 6px 12px;
-    border-radius: 6px;
+    background: linear-gradient(90deg, #0077b6 0%, #0096c7 55%, rgba(0,150,200,0.25) 100%);
+    padding: 10px 24px 10px 16px;
+    border-radius: 8px;
+    margin-top: 12px;
     margin-bottom: 18px;
     letter-spacing: 0.01em;
-    border-left: 4px solid #00b4d8;
+    border-left: 5px solid #00e5ff;
   }}
 
   /* ── Alert badges ── */
@@ -459,9 +466,19 @@ def section(title: str):
 
 CHART_LAYOUT = dict(
     paper_bgcolor="white",
-    plot_bgcolor="#f8fbff",
+    plot_bgcolor="#f0f7ff",
     margin=dict(l=12, r=12, t=36, b=12),
     font=dict(family="Inter, Arial, sans-serif", size=12, color="#1e293b"),
+    xaxis=dict(
+        color="#1e293b", tickfont=dict(color="#1e293b"),
+        title_font=dict(color="#334155"),
+        gridcolor="#e2e8f0", linecolor="#cbd5e1",
+    ),
+    yaxis=dict(
+        color="#1e293b", tickfont=dict(color="#1e293b"),
+        title_font=dict(color="#334155"),
+        gridcolor="#e2e8f0", linecolor="#cbd5e1",
+    ),
 )
 
 # ════════════════════════════════════════════
@@ -1588,4 +1605,3 @@ Upload a CSV or Excel file from the sidebar. Your file must contain these column
 | 45–57 | D | Poor |
 | 0–44 | F | Critical |
         """)
-
