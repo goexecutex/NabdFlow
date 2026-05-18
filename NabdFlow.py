@@ -132,17 +132,13 @@ st.markdown(f"""
   .score-hero p {{ color: #90caf9; margin: 4px 0 0; font-size: 0.9rem; }}
 
   /* ── Section header — visible on both light + dark backgrounds ── */
-  .section-header {
+  .section-header {{
     font-size: 1.15rem; font-weight: 800; color: #ffffff;
     background: linear-gradient(90deg, #0077b6 0%, #00b4d8 60%, transparent 100%);
     padding: 8px 20px 8px 14px;
     border-radius: 8px;
     margin-bottom: 18px;
     letter-spacing: 0.01em;
-  };
-    padding-bottom: 6px;
-    border-bottom: 3px solid {PALETTE['secondary']};
-    margin-bottom: 18px;
   }}
 
   /* ── Alert badges ── */
@@ -1587,4 +1583,3 @@ Upload a CSV or Excel file from the sidebar. Your file must contain these column
 | 45–57 | D | Poor |
 | 0–44 | F | Critical |
         """)
-
