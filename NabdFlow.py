@@ -329,7 +329,7 @@ def calculate_metrics(df: pd.DataFrame) -> pd.DataFrame:
 
     # ── Z-score anomaly detection within location+time groups
     df["Z_Score"] = df.groupby(["Location", "Time_Period"])["Actual_Usage_Litres"].transform(
-        lambda x: (x - x.mean()) / x.std().replace(0, np.nan)
+        lambda x: (x - x.mean()) / x.std() if x.std() > 0 else 0.0
     )
     df["Z_Score"] = df["Z_Score"].fillna(0)
 
