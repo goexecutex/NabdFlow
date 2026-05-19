@@ -1753,4 +1753,3 @@ Upload a CSV or Excel file from the sidebar. Your file must contain these column
 | 45–57 | D | Poor |
 | 0–44 | F | Critical |
         """)
-
