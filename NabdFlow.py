@@ -1,1755 +1,918 @@
-"""
-NabdFlow – AI-Powered Water Intelligence
-University Campus Facility Management Dashboard
-"""
+# ╔══════════════════════════════════════════════════════════════════════════════╗
+# ║  NabdFlow — AI-Powered Water Intelligence for University Campus             ║
+# ║  Sustainability Competition Project · UAE · 2026                           ║
+# ║  Run: streamlit run app.py                                                 ║
+# ╚══════════════════════════════════════════════════════════════════════════════╝
 
 import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 import io
 
-# ════════════════════════════════════════════
-# PAGE CONFIG
-# ════════════════════════════════════════════
+# ── Page Config ────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="NabdFlow – Water Intelligence",
+    page_title="NabdFlow | Water Intelligence",
     page_icon="💧",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ════════════════════════════════════════════
-# DESIGN CONSTANTS
-# ════════════════════════════════════════════
-PALETTE = {
-    "primary":   "#0077b6",
-    "secondary": "#00b4d8",
-    "accent":    "#0096c7",
-    "dark":      "#03045e",
-    "light":     "#caf0f8",
-    "success":   "#22c55e",
-    "warning":   "#f59e0b",
-    "danger":    "#ef4444",
-    "purple":    "#8b5cf6",
-    "bg":        "#f0f6fb",
-}
-
-ALERT_COLOR = {
-    "Normal Variation":   "#22c55e",
-    "Monitor":            "#f59e0b",
-    "High Usage Alert":   "#ef4444",
-    "Possible Leak":      "#3b82f6",
-    "Priority Inspection":"#8b5cf6",
-}
-
-ALERT_WEIGHT = {
-    "Normal Variation":   0,
-    "Monitor":            1,
-    "High Usage Alert":   2,
-    "Possible Leak":      3,
-    "Priority Inspection":4,
-}
-
-# UAE context constants
-WATER_COST_AED_PER_M3    = 4.50   # AED per m³
-CO2_KG_PER_M3            = 0.65   # kg CO₂ per m³ (UAE desalination + distribution)
-UAE_BENCH_L_PERSON_DAY   = 180.0  # UAE university average litres/person/day
-TREES_PER_100KG_CO2      = 1      # 1 tree absorbs ~100 kg CO₂/yr
-
-# ════════════════════════════════════════════
-# PREMIUM CSS
-# ════════════════════════════════════════════
-st.markdown(f"""
+# ── Global CSS ─────────────────────────────────────────────────────────────────
+st.markdown("""
 <style>
-/* ═══════════════════════════════════════════════════════════
-   NABDFLOW — MASTER CSS
-   Strategy: force entire app background + text dark regardless
-   of whether user has dark/light OS theme. Do not rely on
-   config.toml alone. Override at every level.
-   ═══════════════════════════════════════════════════════════ */
+  .stApp { background:#f0f4f8; }
+  [data-testid="stSidebar"] {
+    background: linear-gradient(180deg,#0a2342 0%,#1a4a7a 100%);
+  }
+  [data-testid="stSidebar"] * { color:#e8f4f8 !important; }
 
-/* ── 1. Force app background to light ── */
-.stApp,
-[data-testid="stApp"],
-[data-testid="stAppViewContainer"],
-[data-testid="stMain"],
-[data-testid="stMainBlockContainer"],
-section.main,
-.main {{
-  background-color: {PALETTE['bg']} !important;
-}}
-.block-container {{
-  padding-top: 2.8rem !important;
-  padding-bottom: 2rem !important;
-  background-color: transparent !important;
-}}
+  /* KPI cards */
+  .kpi { background:white; border-radius:12px; padding:18px 14px;
+         text-align:center; box-shadow:0 2px 10px rgba(0,0,0,.07);
+         border-left:4px solid #1a6eb5; margin-bottom:6px; }
+  .kpi.warn  { border-left-color:#f39c12; }
+  .kpi.alert { border-left-color:#e74c3c; }
+  .kpi.good  { border-left-color:#27ae60; }
+  .kpi-label { font-size:11px; color:#7f8c8d; font-weight:700;
+               text-transform:uppercase; letter-spacing:.5px; }
+  .kpi-val   { font-size:26px; font-weight:800; color:#2c3e50; margin:4px 0; }
+  .kpi-sub   { font-size:11px; color:#aaa; }
 
-/* ── 2. NUCLEAR: force dark text on ALL main content elements ──
-   This defeats dark-mode grey at every nesting level.           */
-[data-testid="stMainBlockContainer"] p,
-[data-testid="stMainBlockContainer"] span:not(.badge-normal):not(.badge-monitor):not(.badge-high):not(.badge-leak):not(.badge-priority),
-[data-testid="stMainBlockContainer"] label,
-[data-testid="stMainBlockContainer"] small,
-[data-testid="stMainBlockContainer"] li,
-[data-testid="stMainBlockContainer"] td,
-[data-testid="stMainBlockContainer"] h1,
-[data-testid="stMainBlockContainer"] h2,
-[data-testid="stMainBlockContainer"] h3,
-[data-testid="stMainBlockContainer"] h4,
-[data-testid="stMainBlockContainer"] h5 {{
-  color: #1e293b !important;
-}}
+  /* Section header bar */
+  .sec { background:linear-gradient(90deg,#1a6eb5,#0a9396); color:white;
+         padding:9px 18px; border-radius:8px; font-size:15px;
+         font-weight:700; margin:18px 0 8px 0; }
 
-/* ── 3. Specific Streamlit component text ── */
-[data-testid="stMetricLabel"] p,
-[data-testid="stMetricLabel"] label,
-[data-testid="stMetricLabel"] div {{
-  color: #475569 !important;
-  font-size: 0.73rem !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.07em !important;
-}}
-[data-testid="stMetricValue"],
-[data-testid="stMetricValue"] div {{
-  color: #023e8a !important;
-  font-weight: 900 !important;
-}}
-[data-testid="stMetricDelta"] span {{
-  color: #64748b !important;
-}}
-[data-testid="stWidgetLabel"] p,
-[data-testid="stWidgetLabel"] label,
-[data-testid="stWidgetLabel"] span {{
-  color: #334155 !important;
-  font-weight: 600 !important;
-  font-size: 0.84rem !important;
-}}
-[data-testid="stCaptionContainer"] p,
-[data-testid="stCaptionContainer"] span,
-.stCaption p {{
-  color: #64748b !important;
-  font-size: 0.82rem !important;
-}}
-/* Multiselect tags */
-[data-testid="stMultiSelect"] span {{
-  color: #1e293b !important;
-}}
-/* Radio buttons, checkboxes */
-[data-testid="stRadio"] label span,
-[data-testid="stCheckbox"] label span {{
-  color: #1e293b !important;
-}}
-/* Markdown bold & headings outside cards */
-.stMarkdown p   {{ color: #1e293b !important; }}
-.stMarkdown h3  {{ color: #023e8a !important; font-weight: 800 !important; }}
-.stMarkdown h4  {{ color: #0369a1 !important; font-weight: 700 !important; }}
-.stMarkdown strong {{ color: #0f172a !important; }}
-.stMarkdown li  {{ color: #1e293b !important; }}
-.stMarkdown td,
-.stMarkdown th  {{ color: #1e293b !important; }}
-/* Table headers */
-.stMarkdown th  {{
-  background: #dbeafe !important;
-  font-weight: 700 !important;
-  color: #1e3a5f !important;
-}}
-/* DataFrame */
-[data-testid="stDataFrame"] th {{
-  color: #1e293b !important;
-  background: #dbeafe !important;
-  font-weight: 700 !important;
-}}
-[data-testid="stDataFrame"] td {{
-  color: #1e293b !important;
-}}
-/* Number input, text input */
-.stNumberInput input,
-.stTextInput input,
-.stDateInput input {{
-  color: #1e293b !important;
-  background: #ffffff !important;
-}}
-/* Selectbox, multiselect dropdown text */
-.stSelectbox div[data-baseweb="select"] span,
-.stMultiSelect div[data-baseweb="select"] span {{
-  color: #1e293b !important;
-}}
-/* Alert / info boxes */
-[data-testid="stAlert"] p {{
-  color: #1e293b !important;
-}}
+  /* Recommendation cards */
+  .rec { background:white; border-radius:10px; padding:16px 18px;
+         margin-bottom:10px; box-shadow:0 2px 8px rgba(0,0,0,.06);
+         border-left:4px solid #0a9396; }
+  .rec.high   { border-left-color:#e74c3c; }
+  .rec.medium { border-left-color:#f39c12; }
+  .rec.low    { border-left-color:#27ae60; }
 
-/* ── 4. RESTORE white text on intentionally dark elements ── */
-.section-header,
-.section-header * {{ color: #ffffff !important; }}
-.score-hero,
-.score-hero p,
-.score-hero h1,
-.score-hero span {{ color: #ffffff !important; }}
-.score-hero p {{ color: #90caf9 !important; }}
-.sdg-chip {{ color: #ffffff !important; }}
-.badge-normal   {{ color: #166534 !important; }}
-.badge-monitor  {{ color: #854d0e !important; }}
-.badge-high     {{ color: #991b1b !important; }}
-.badge-leak     {{ color: #1e40af !important; }}
-.badge-priority {{ color: #4c1d95 !important; }}
+  /* Page headings */
+  .pg-title { font-size:26px; font-weight:800; color:#0a2342; }
+  .pg-sub   { font-size:13px; color:#7f8c8d; margin-bottom:18px; }
 
-/* ── 5. Sidebar stays dark with light text ── */
-section[data-testid="stSidebar"] {{
-  background: linear-gradient(180deg, #03045e 0%, #023e8a 60%, #0077b6 100%) !important;
-}}
-section[data-testid="stSidebar"] *,
-section[data-testid="stSidebar"] p,
-section[data-testid="stSidebar"] span,
-section[data-testid="stSidebar"] label {{
-  color: #e0f2fe !important;
-}}
-section[data-testid="stSidebar"] .stRadio > div > label {{
-  background: rgba(255,255,255,0.07);
-  border-radius: 8px;
-  padding: 6px 10px;
-  margin: 2px 0;
-  transition: background 0.2s;
-}}
-section[data-testid="stSidebar"] .stRadio > div > label:hover {{
-  background: rgba(255,255,255,0.15);
-}}
-
-/* ── 6. KPI Cards ── */
-.kpi-card {{
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 20px 18px 14px;
-  box-shadow: 0 2px 16px rgba(0,100,200,0.09);
-  border-top: 4px solid {PALETTE['primary']};
-  position: relative;
-  overflow: hidden;
-  height: 120px;
-}}
-.kpi-card::after {{
-  content: "";
-  position: absolute;
-  right: -20px; bottom: -20px;
-  width: 80px; height: 80px;
-  border-radius: 50%;
-  background: {PALETTE['light']};
-  opacity: 0.5;
-}}
-.kpi-label {{
-  font-size: 0.72rem !important; color: #64748b !important;
-  font-weight: 700 !important; text-transform: uppercase;
-  letter-spacing: 0.07em;
-}}
-.kpi-value {{
-  font-size: 1.75rem !important; font-weight: 900 !important;
-  color: {PALETTE['dark']} !important; line-height: 1.2; margin: 4px 0 2px;
-}}
-.kpi-sub   {{ font-size: 0.72rem !important; color: #94a3b8 !important; }}
-.kpi-trend-up   {{ color: #ef4444 !important; font-size: 0.78rem; font-weight:700; }}
-.kpi-trend-down {{ color: #22c55e !important; font-size: 0.78rem; font-weight:700; }}
-.kpi-trend-flat {{ color: #64748b !important; font-size: 0.78rem; font-weight:700; }}
-
-/* ── 7. Score Card ── */
-.score-hero {{
-  background: linear-gradient(135deg, #03045e 0%, #0077b6 100%);
-  border-radius: 20px;
-  padding: 32px 36px;
-  box-shadow: 0 8px 32px rgba(0,80,180,0.25);
-  margin-bottom: 16px;
-}}
-
-/* ── 8. Section header ── */
-.section-header {{
-  display: block;
-  font-size: 1.1rem; font-weight: 800;
-  background: linear-gradient(90deg, #0077b6 0%, #0096c7 55%, rgba(0,150,200,0.25) 100%);
-  padding: 10px 24px 10px 16px;
-  border-radius: 8px;
-  margin-top: 12px;
-  margin-bottom: 18px;
-  letter-spacing: 0.01em;
-  border-left: 5px solid #00e5ff;
-}}
-
-/* ── 9. Alert badges ── */
-.badge-normal   {{ background:#dcfce7; padding:3px 10px; border-radius:20px; font-size:0.74rem; font-weight:700; }}
-.badge-monitor  {{ background:#fef9c3; padding:3px 10px; border-radius:20px; font-size:0.74rem; font-weight:700; }}
-.badge-high     {{ background:#fee2e2; padding:3px 10px; border-radius:20px; font-size:0.74rem; font-weight:700; }}
-.badge-leak     {{ background:#dbeafe; padding:3px 10px; border-radius:20px; font-size:0.74rem; font-weight:700; }}
-.badge-priority {{ background:#ede9fe; padding:3px 10px; border-radius:20px; font-size:0.74rem; font-weight:700; }}
-
-/* ── 10. Recommendation cards ── */
-.rec-card {{
-  background: #ffffff;
-  border-left: 5px solid {PALETTE['accent']};
-  border-radius: 12px;
-  padding: 14px 18px;
-  margin-bottom: 10px;
-  box-shadow: 0 2px 10px rgba(0,100,180,0.07);
-}}
-
-/* ── 11. Roadmap rows ── */
-.roadmap-row {{
-  display: flex; align-items: center;
-  background: #fff; border-radius: 10px;
-  padding: 12px 16px; margin-bottom: 8px;
-  box-shadow: 0 1px 6px rgba(0,80,160,0.07);
-  gap: 16px;
-}}
-.roadmap-rank   {{ font-size: 1.4rem; font-weight: 900; color: {PALETTE['primary']} !important; min-width: 36px; }}
-.roadmap-loc    {{ font-weight: 700; color: {PALETTE['dark']} !important; font-size: 0.95rem; }}
-.roadmap-action {{ color: #334155 !important; font-size: 0.85rem; font-weight: 500; }}
-.roadmap-aed    {{
-  margin-left: auto;
-  background: {PALETTE['light']};
-  color: {PALETTE['dark']} !important;
-  font-weight: 800; font-size: 0.9rem;
-  padding: 4px 12px; border-radius: 20px;
-  white-space: nowrap;
-}}
-
-/* ── 12. Impact report ── */
-.report-box {{ background: #fff; border-radius: 16px; padding: 32px; box-shadow: 0 4px 24px rgba(0,80,160,0.10); }}
-.sdg-chip   {{ display:inline-block; background:#1d4ed8; font-size:0.78rem; font-weight:700; padding:4px 12px; border-radius:20px; margin:3px; }}
-
-/* ── 13. Misc ── */
-hr {{ border: none; border-top: 1px solid #e2ecf5; margin: 22px 0; }}
-.bench-bar-wrap {{ background: #e2ecf5; border-radius: 8px; height:14px; margin: 4px 0; }}
-.bench-bar      {{ border-radius: 8px; height: 14px; }}
+  hr { border:none; border-top:1px solid #e0e6ed; margin:20px 0; }
+  #MainMenu,footer { visibility:hidden; }
+  [data-testid="metric-container"] {
+    background:white; border-radius:10px; padding:14px;
+    box-shadow:0 2px 8px rgba(0,0,0,.06);
+  }
 </style>
 """, unsafe_allow_html=True)
 
-# ════════════════════════════════════════════
-# SAMPLE DATA
-# ════════════════════════════════════════════
-LOCATIONS = [
-    "Washroom Block A",
-    "Cafeteria/Pantry",
-    "Garden Irrigation",
-    "Admin Building",
-    "Student Common Area",
-]
-TIME_PERIODS = ["Morning", "Afternoon", "Evening", "Night"]
-NOTES_POOL  = [
-    "Routine reading", "Post-event usage", "Holiday period", "",
-    "Maintenance window", "High foot traffic", "Irrigation cycle", "Staff only",
-]
+# ── Colour palette ─────────────────────────────────────────────────────────────
+C = dict(primary="#1a6eb5", secondary="#0a9396", accent="#94d2bd",
+         warn="#f39c12", danger="#e74c3c", ok="#27ae60", dark="#0a2342")
 
-BASELINES = {
-    ("Washroom Block A",    "Morning"):   520,
-    ("Washroom Block A",    "Afternoon"): 480,
-    ("Washroom Block A",    "Evening"):   310,
-    ("Washroom Block A",    "Night"):     40,
-    ("Cafeteria/Pantry",    "Morning"):   380,
-    ("Cafeteria/Pantry",    "Afternoon"): 620,
-    ("Cafeteria/Pantry",    "Evening"):   290,
-    ("Cafeteria/Pantry",    "Night"):     20,
-    ("Garden Irrigation",   "Morning"):   700,
-    ("Garden Irrigation",   "Afternoon"): 850,
-    ("Garden Irrigation",   "Evening"):   500,
-    ("Garden Irrigation",   "Night"):     50,
-    ("Admin Building",      "Morning"):   260,
-    ("Admin Building",      "Afternoon"): 300,
-    ("Admin Building",      "Evening"):   120,
-    ("Admin Building",      "Night"):     15,
-    ("Student Common Area", "Morning"):   410,
-    ("Student Common Area", "Afternoon"): 530,
-    ("Student Common Area", "Evening"):   470,
-    ("Student Common Area", "Night"):     30,
+ALERT_COL = {
+    "Normal Variation": "#2ecc71",
+    "Monitor":          "#f1c40f",
+    "High Usage Alert": "#e67e22",
+    "Possible Leak":    "#e74c3c",
+    "Priority Inspection": "#8e44ad",
 }
 
-OCC_BASE = {"Morning": 180, "Afternoon": 210, "Evening": 130, "Night": 12}
-
-
+# ══════════════════════════════════════════════════════════════════════════════
+# SAMPLE DATA
+# ══════════════════════════════════════════════════════════════════════════════
 @st.cache_data
-def generate_sample_data(days: int = 42, seed: int = 42) -> pd.DataFrame:
-    rng    = np.random.default_rng(seed)
-    recs   = []
-    start  = datetime(2024, 9, 1)
+def make_sample():
+    """Generate 30-day realistic campus water dataset with embedded anomalies."""
+    np.random.seed(42)
+    locs = ["Washroom Block A","Cafeteria/Pantry","Garden Irrigation",
+            "Admin Building","Student Common Area"]
+    periods = ["Morning","Afternoon","Evening","Night"]
 
-    for day_i in range(days):
-        date = (start + timedelta(days=day_i)).strftime("%Y-%m-%d")
-        for loc in LOCATIONS:
-            for tp in TIME_PERIODS:
-                expected    = BASELINES[(loc, tp)]
-                noise       = rng.normal(1.0, 0.07)
-                anomaly     = rng.random()
-                if anomaly < 0.05:
-                    noise *= rng.uniform(1.28, 1.65)
-                elif anomaly < 0.08:
-                    noise *= rng.uniform(1.16, 1.27)
-                elif anomaly < 0.11 and tp == "Night":
-                    noise *= rng.uniform(1.30, 2.40)
-                actual   = max(0.0, round(expected * noise, 1))
-                occ      = max(0, int(OCC_BASE[tp] * rng.normal(1, 0.15)))
-                note     = rng.choice(NOTES_POOL)
-                recs.append({
-                    "Date":                 date,
-                    "Location":             loc,
-                    "Time_Period":          tp,
-                    "Actual_Usage_Litres":  actual,
-                    "Expected_Usage_Litres":float(expected),
-                    "Occupancy_Count":      occ,
-                    "Notes":               note,
+    # Expected litres per (location, period)
+    base = {
+        ("Washroom Block A",  "Morning"):800,  ("Washroom Block A",  "Afternoon"):600,
+        ("Washroom Block A",  "Evening"):500,  ("Washroom Block A",  "Night"):80,
+        ("Cafeteria/Pantry",  "Morning"):400,  ("Cafeteria/Pantry",  "Afternoon"):900,
+        ("Cafeteria/Pantry",  "Evening"):700,  ("Cafeteria/Pantry",  "Night"):50,
+        ("Garden Irrigation", "Morning"):1200, ("Garden Irrigation", "Afternoon"):200,
+        ("Garden Irrigation", "Evening"):1000, ("Garden Irrigation", "Night"):100,
+        ("Admin Building",    "Morning"):300,  ("Admin Building",    "Afternoon"):400,
+        ("Admin Building",    "Evening"):200,  ("Admin Building",    "Night"):30,
+        ("Student Common Area","Morning"):500, ("Student Common Area","Afternoon"):700,
+        ("Student Common Area","Evening"):600, ("Student Common Area","Night"):60,
+    }
+    notes_pool = ["","","","","Tap reported dripping","Irrigation timer checked",
+                  "Cleaning crew active","Weekend low activity",
+                  "Event in cafeteria","Maintenance check done","Meter reading verified"]
+
+    rows, start = [], datetime(2026, 3, 1)
+    for day in range(30):
+        dt = start + timedelta(days=day)
+        for loc in locs:
+            for tp in periods:
+                exp = base[(loc, tp)]
+                r   = np.random.random()
+
+                # Inject scenario-specific anomalies
+                if loc == "Washroom Block A" and 10 <= day <= 18:
+                    m = np.random.uniform(1.28,1.45) if tp=="Night" else np.random.uniform(1.1,1.3)
+                elif loc == "Garden Irrigation" and day >= 20:
+                    m = np.random.uniform(1.18,1.35)
+                elif loc == "Cafeteria/Pantry" and tp=="Afternoon" and day in [5,6,12,13,19,20]:
+                    m = np.random.uniform(1.20,1.32)
+                elif r > 0.92:
+                    m = np.random.uniform(1.26,1.42)
+                elif r < 0.05:
+                    m = np.random.uniform(0.50,0.75)
+                else:
+                    m = np.random.uniform(0.88,1.14)
+
+                actual = max(0, round(exp*m + np.random.normal(0, exp*0.03), 1))
+                rows.append({
+                    "Date": dt.strftime("%Y-%m-%d"),
+                    "Location": loc,
+                    "Time_Period": tp,
+                    "Actual_Usage_Litres": actual,
+                    "Expected_Usage_Litres": float(exp),
+                    "Occupancy_Count": int(np.random.randint(5,200)),
+                    "Notes": np.random.choice(notes_pool),
                 })
-    return pd.DataFrame(recs)
+    return pd.DataFrame(rows)
 
-
-# ════════════════════════════════════════════
-# CORE CALCULATIONS
-# ════════════════════════════════════════════
-REQUIRED_COLS = [
-    "Date", "Location", "Time_Period",
-    "Actual_Usage_Litres", "Expected_Usage_Litres",
-    "Occupancy_Count", "Notes",
-]
-
-
-def validate_df(df: pd.DataFrame):
-    missing = [c for c in REQUIRED_COLS if c not in df.columns]
+# ══════════════════════════════════════════════════════════════════════════════
+# DATA PROCESSING
+# ══════════════════════════════════════════════════════════════════════════════
+def process(df):
+    required = ["Date","Location","Time_Period","Actual_Usage_Litres","Expected_Usage_Litres"]
+    missing  = [c for c in required if c not in df.columns]
     if missing:
-        raise ValueError(f"Missing columns: {', '.join(missing)}")
+        st.error(f"❌ Missing required columns: {', '.join(missing)}")
+        st.stop()
 
-
-def calculate_metrics(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    df["Date"] = pd.to_datetime(df["Date"])
+    df["Date"]                  = pd.to_datetime(df["Date"])
+    df["Actual_Usage_Litres"]   = pd.to_numeric(df["Actual_Usage_Litres"],   errors="coerce").fillna(0)
+    df["Expected_Usage_Litres"] = pd.to_numeric(df["Expected_Usage_Litres"], errors="coerce").fillna(0)
 
-    # ── Core water metrics
-    df["Excess_Usage_Litres"]    = df["Actual_Usage_Litres"] - df["Expected_Usage_Litres"]
-    df["Avoidable_Excess_Litres"]= df["Excess_Usage_Litres"].clip(lower=0)
-    df["Difference_Percentage"]  = (
-        (df["Actual_Usage_Litres"] - df["Expected_Usage_Litres"])
-        / df["Expected_Usage_Litres"].replace(0, np.nan)
-    ) * 100
-    df["Estimated_AED_Savings"]  = (df["Avoidable_Excess_Litres"] / 1000) * WATER_COST_AED_PER_M3
-    df["CO2_Equivalent_kg"]      = (df["Avoidable_Excess_Litres"] / 1000) * CO2_KG_PER_M3
+    df["Excess_Litres"]         = df["Actual_Usage_Litres"] - df["Expected_Usage_Litres"]
+    df["Avoidable_Litres"]      = df["Excess_Litres"].clip(lower=0)
+    df["Diff_Pct"]              = np.where(
+        df["Expected_Usage_Litres"] > 0,
+        df["Excess_Litres"] / df["Expected_Usage_Litres"] * 100, 0)
+    df["AED_Savings"]           = df["Avoidable_Litres"] / 1000 * 4.5
 
-    # ── Occupancy-adjusted intensity (L per person)
-    df["Usage_Per_Person"] = (
-        df["Actual_Usage_Litres"]
-        / df["Occupancy_Count"].replace(0, np.nan)
-    )
-
-    # ── Z-score anomaly detection within location+time groups
-    df["Z_Score"] = df.groupby(["Location", "Time_Period"])["Actual_Usage_Litres"].transform(
-        lambda x: (x - x.mean()) / x.std() if x.std() > 0 else 0.0
-    )
-    df["Z_Score"] = df["Z_Score"].fillna(0)
-
-    # ── Alert classification (rule-based)
+    # Alert classification
     def classify(row):
-        pct = row["Difference_Percentage"]
-        tp  = str(row["Time_Period"]).strip().lower()
-        if pct >= 25 and tp == "night":
-            return "Possible Leak"
-        elif pct >= 25:
-            return "High Usage Alert"
-        elif pct >= 15:
-            return "Monitor"
-        else:
-            return "Normal Variation"
+        p = row["Diff_Pct"]
+        t = str(row.get("Time_Period","")).lower()
+        if p >= 25 and t == "night": return "Possible Leak"
+        if p >= 25:                  return "High Usage Alert"
+        if p >= 15:                  return "Monitor"
+        return "Normal Variation"
 
-    df["Alert_Category"] = df.apply(classify, axis=1)
+    df["Alert"] = df.apply(classify, axis=1)
 
-    # ── Upgrade to Priority Inspection: same location High Usage on ≥2 dates
-    high_df    = df[df["Alert_Category"] == "High Usage Alert"].copy()
-    loc_days   = (
-        high_df.groupby(["Location", "Date"])
-               .size()
-               .reset_index(name="n")
-               .groupby("Location")
-               .size()
-               .reset_index(name="days")
-    )
-    priority_locs = set(loc_days.loc[loc_days["days"] >= 2, "Location"])
-    df.loc[
-        (df["Alert_Category"] == "High Usage Alert") & (df["Location"].isin(priority_locs)),
-        "Alert_Category"
-    ] = "Priority Inspection"
-
-    # ── Confidence score (combines % deviation + Z-score)
-    def confidence(row):
-        pct = abs(row["Difference_Percentage"])
-        z   = abs(row["Z_Score"])
-        if pct >= 50 and z >= 2.5:  return "Very High"
-        elif pct >= 35 and z >= 2.0: return "High"
-        elif pct >= 25:              return "Medium"
-        else:                        return "Low"
-
-    df["Alert_Confidence"] = df.apply(confidence, axis=1)
-    df["Alert_Weight"]     = df["Alert_Category"].map(ALERT_WEIGHT)
+    # Upgrade to Priority Inspection: same location High Usage on 2+ distinct days
+    hi_days = (df[df["Alert"]=="High Usage Alert"]
+               .groupby("Location")["Date"].nunique())
+    p_locs = hi_days[hi_days >= 2].index.tolist()
+    mask = (df["Alert"]=="High Usage Alert") & (df["Location"].isin(p_locs))
+    df.loc[mask, "Alert"] = "Priority Inspection"
 
     return df
 
+# ══════════════════════════════════════════════════════════════════════════════
+# HELPERS
+# ══════════════════════════════════════════════════════════════════════════════
+def kpi(label, val, sub="", cls=""):
+    st.markdown(
+        f'<div class="kpi {cls}"><div class="kpi-label">{label}</div>'
+        f'<div class="kpi-val">{val}</div><div class="kpi-sub">{sub}</div></div>',
+        unsafe_allow_html=True)
 
-# ════════════════════════════════════════════
-# ANALYTICS HELPERS
-# ════════════════════════════════════════════
+def sec(title):
+    st.markdown(f'<div class="sec">{title}</div>', unsafe_allow_html=True)
 
-def sustainability_score(df: pd.DataFrame) -> float:
-    total = len(df)
-    if total == 0:
-        return 100.0
-    w_sum   = df["Alert_Weight"].sum()
-    max_w   = total * 4
-    score   = 100.0 * (1 - w_sum / max_w)
-    return max(0.0, min(100.0, round(score, 1)))
-
-
-def score_grade(s: float):
-    if s >= 88: return "A+", "#22c55e"
-    if s >= 78: return "A",  "#4ade80"
-    if s >= 68: return "B",  "#84cc16"
-    if s >= 58: return "C",  "#f59e0b"
-    if s >= 45: return "D",  "#f97316"
-    return "F", "#ef4444"
-
-
-def week_trend(df: pd.DataFrame, col: str) -> tuple:
-    """Return (current_week_val, prev_week_val, pct_change)."""
-    daily   = df.groupby("Date")[col].sum().sort_index()
-    if len(daily) < 8:
-        return daily.sum(), None, None
-    curr    = daily.iloc[-7:].sum()
-    prev    = daily.iloc[-14:-7].sum()
-    if prev == 0:
-        return curr, prev, None
-    change  = (curr - prev) / prev * 100
-    return curr, prev, change
-
-
-def forecast_7d(df: pd.DataFrame) -> pd.DataFrame:
-    """Simple 7-day forward forecast using last-14-day linear trend."""
-    daily = (
-        df.groupby("Date")["Actual_Usage_Litres"]
-          .sum()
-          .reset_index()
-          .sort_values("Date")
-    )
-    if len(daily) < 7:
-        return pd.DataFrame()
-    last14  = daily["Actual_Usage_Litres"].tail(14).values
-    slope   = np.polyfit(range(len(last14)), last14, 1)[0]
-    base    = daily["Actual_Usage_Litres"].tail(7).mean()
-    last_d  = daily["Date"].max()
-    dates   = [last_d + timedelta(days=i + 1) for i in range(7)]
-    vals    = [max(0, base + slope * (i + 1)) for i in range(7)]
-    return pd.DataFrame({
-        "Date":    dates,
-        "Forecast":vals,
-        "Upper":   [v * 1.09 for v in vals],
-        "Lower":   [v * 0.91 for v in vals],
-    })
-
-
-# ════════════════════════════════════════════
-# UI HELPERS
-# ════════════════════════════════════════════
-
-def kpi_card(label, value, sub="", trend=None, col=None):
-    if trend is None:
-        trend_html = ""
-    elif trend > 2:
-        trend_html = f'<div class="kpi-trend-up">▲ {trend:+.1f}% vs last week</div>'
-    elif trend < -2:
-        trend_html = f'<div class="kpi-trend-down">▼ {trend:+.1f}% vs last week</div>'
-    else:
-        trend_html = '<div class="kpi-trend-flat">→ Stable</div>'
-
-    html = f"""
-    <div class="kpi-card">
-      <div class="kpi-label">{label}</div>
-      <div class="kpi-value">{value}</div>
-      <div class="kpi-sub">{sub}</div>
-      {trend_html}
-    </div>"""
-    (col or st).markdown(html, unsafe_allow_html=True)
-
-
-def section(title: str):
-    st.markdown(f'<div class="section-header">{title}</div>', unsafe_allow_html=True)
-
-
-CHART_LAYOUT = dict(
-    paper_bgcolor="white",
-    plot_bgcolor="#f0f7ff",
-    margin=dict(l=12, r=12, t=36, b=12),
-    font=dict(family="Inter, Arial, sans-serif", size=12, color="#1e293b"),
-    legend=dict(
-        font=dict(color="#1e293b", size=12),
-        bgcolor="rgba(255,255,255,0.9)",
-        bordercolor="#e2e8f0",
-        borderwidth=1,
-    ),
-)
-
-_AXIS = dict(
-    color="#1e293b",
-    tickfont=dict(color="#1e293b", size=11),
-    title_font=dict(color="#334155", size=12),
-    gridcolor="#e2e8f0",
-    linecolor="#cbd5e1",
-    zerolinecolor="#cbd5e1",
-)
-
-def style_axes(fig):
-    """Apply dark-readable axis + legend colours to any Plotly figure."""
-    fig.update_xaxes(**_AXIS)
-    fig.update_yaxes(**_AXIS)
-    # Force legend text dark — fixes invisible grey labels in dark mode
+def chart_layout(fig, h=320, xtick_angle=0):
     fig.update_layout(
-        legend=dict(
-            font=dict(color="#1e293b", size=12),
-            bgcolor="rgba(255,255,255,0.92)",
-            bordercolor="#e2e8f0",
-            borderwidth=1,
-        )
-    )
+        height=h, plot_bgcolor="white", paper_bgcolor="white",
+        margin=dict(l=8,r=8,t=20,b=8), hovermode="x unified",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        font=dict(family="Inter,sans-serif", size=12),
+        xaxis_tickangle=xtick_angle)
     return fig
 
-# ════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════════════
 # SIDEBAR
-# ════════════════════════════════════════════
-with st.sidebar:
-    st.markdown("## 💧 NabdFlow")
-    st.markdown("*AI-Powered Water Intelligence*")
-    st.markdown("---")
-
-    page = st.radio(
-        "Navigate",
-        [
-            "📊 Overview Dashboard",
-            "📍 Location Analysis",
-            "🔍 Leak Detection",
-            "🤖 AI Recommendations",
-            "📄 Impact Report",
-            "ℹ️ About NabdFlow",
-        ],
-    )
-    st.markdown("---")
-
-    st.markdown("**Data Source**")
-    use_sample   = st.checkbox("Use built-in sample data", value=True)
-    uploaded_file = None
-    if not use_sample:
-        uploaded_file = st.file_uploader("Upload CSV / Excel", type=["csv","xlsx","xls"])
-
-    st.markdown("---")
-    st.markdown("**🔎 Global Filters**")
-
-# ════════════════════════════════════════════
-# LOAD DATA
-# ════════════════════════════════════════════
-df_raw = None
-
-if use_sample or uploaded_file is None:
-    df_raw = generate_sample_data()
-    st.sidebar.success("✅ Sample dataset (42 days)")
-else:
-    try:
-        df_raw = (
-            pd.read_csv(uploaded_file)
-            if uploaded_file.name.endswith(".csv")
-            else pd.read_excel(uploaded_file)
-        )
-        validate_df(df_raw)
-        st.sidebar.success(f"✅ {uploaded_file.name}")
-    except ValueError as e:
-        st.error(f"❌ {e}")
-        st.stop()
-    except Exception as e:
-        st.error(f"❌ Cannot read file: {e}")
-        st.stop()
-
-df_all = calculate_metrics(df_raw)
-
-# ── Global filters (sidebar) ──────────────────────────────────────
-with st.sidebar:
-    min_d = df_all["Date"].min().date()
-    max_d = df_all["Date"].max().date()
-    date_range = st.date_input(
-        "Date Range",
-        value=(min_d, max_d),
-        min_value=min_d,
-        max_value=max_d,
-    )
-    all_locs = sorted(df_all["Location"].unique())
-    sel_locs = st.multiselect("Locations", all_locs, default=all_locs)
-    st.markdown("---")
-    st.caption("University Facility Manager Tool")
-    st.caption("NabdFlow · Campus Water Intelligence")
-
-# Apply global filters
-if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
-    d0, d1 = pd.Timestamp(date_range[0]), pd.Timestamp(date_range[1])
-else:
-    d0, d1 = df_all["Date"].min(), df_all["Date"].max()
-
-df = df_all[
-    (df_all["Date"] >= d0) &
-    (df_all["Date"] <= d1) &
-    (df_all["Location"].isin(sel_locs if sel_locs else all_locs))
-].copy()
-
-if df.empty:
-    st.warning("⚠️ No data for selected filters. Please adjust the date range or location selection.")
-    st.stop()
-
-# ════════════════════════════════════════════════════════════════════
-# PAGE 1 — OVERVIEW DASHBOARD
-# ════════════════════════════════════════════════════════════════════
-if page == "📊 Overview Dashboard":
-
-    # ── Sustainability Score hero ──────────────────────────────────
-    score             = sustainability_score(df)
-    grade, grade_col  = score_grade(score)
-    total_actual      = df["Actual_Usage_Litres"].sum()
-    total_expected    = df["Expected_Usage_Litres"].sum()
-    total_avoid       = df["Avoidable_Excess_Litres"].sum()
-    total_aed         = df["Estimated_AED_Savings"].sum()
-    total_co2         = df["CO2_Equivalent_kg"].sum()
-    high_cnt          = df[df["Alert_Category"].isin(["High Usage Alert","Priority Inspection"])].shape[0]
-    leak_cnt          = df[df["Alert_Category"] == "Possible Leak"].shape[0]
-    prio_cnt          = df[df["Alert_Category"] == "Priority Inspection"].shape[0]
-    top_loc           = df.groupby("Location")["Actual_Usage_Litres"].sum().idxmax()
-    avg_daily         = df.groupby("Date")["Actual_Usage_Litres"].sum().mean()
-
-    # Week trends
-    _, _, trend_actual  = week_trend(df, "Actual_Usage_Litres")
-    _, _, trend_avoid   = week_trend(df, "Avoidable_Excess_Litres")
-
-    # Hero card
-    st.markdown(f"""
-    <div class="score-hero">
-      <div style="display:flex; align-items:center; gap:32px; flex-wrap:wrap;">
-        <div>
-          <div style="font-size:0.8rem;letter-spacing:0.1em;color:#90caf9;font-weight:700;
-                      text-transform:uppercase;">Campus Sustainability Score</div>
-          <h1 style="font-size:4rem;font-weight:900;margin:4px 0;color:#fff;">{score:.0f}
-            <span style="font-size:1.8rem;color:{grade_col};">{grade}</span>
-          </h1>
-          <p>Based on {len(df):,} readings across {df['Location'].nunique()} locations
-             · {d0.strftime('%d %b')} – {d1.strftime('%d %b %Y')}</p>
+# ══════════════════════════════════════════════════════════════════════════════
+def sidebar():
+    with st.sidebar:
+        st.markdown("""
+        <div style="text-align:center;padding:20px 0 10px">
+          <div style="font-size:44px">💧</div>
+          <div style="font-size:22px;font-weight:800;color:#94d2bd;letter-spacing:1px">NabdFlow</div>
+          <div style="font-size:11px;color:#a8d5e8">Water Intelligence Platform</div>
         </div>
-        <div style="display:flex;gap:28px;flex-wrap:wrap;margin-left:auto;">
-          <div style="text-align:center;">
-            <div style="font-size:2rem;font-weight:800;color:#fff;">{total_avoid/1000:,.1f}</div>
-            <div style="color:#90caf9;font-size:0.78rem;">m³ Avoidable Waste</div>
-          </div>
-          <div style="text-align:center;">
-            <div style="font-size:2rem;font-weight:800;color:#ffd166;">AED {total_aed:,.0f}</div>
-            <div style="color:#90caf9;font-size:0.78rem;">Potential Savings</div>
-          </div>
-          <div style="text-align:center;">
-            <div style="font-size:2rem;font-weight:800;color:#80ffb4;">{total_co2:,.1f}</div>
-            <div style="color:#90caf9;font-size:0.78rem;">kg CO₂ Equivalent</div>
-          </div>
-          <div style="text-align:center;">
-            <div style="font-size:2rem;font-weight:800;color:#ff8fa3;">{prio_cnt + leak_cnt}</div>
-            <div style="color:#90caf9;font-size:0.78rem;">Priority Alerts</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("---")
-
-    # ── KPI Cards (8) ──────────────────────────────────────────────
-    section("📐 Key Performance Indicators")
-    c1, c2, c3, c4 = st.columns(4)
-    kpi_card("Total Water Used",       f"{total_actual:,.0f} L",   f"{total_actual/1000:,.1f} m³", trend_actual,  c1)
-    kpi_card("Expected Water Use",     f"{total_expected:,.0f} L", f"{total_expected/1000:,.1f} m³", None,         c2)
-    kpi_card("Avoidable Excess",       f"{total_avoid:,.0f} L",   f"{total_avoid/1000:,.2f} m³",  trend_avoid,   c3)
-    kpi_card("Estimated AED Savings",  f"AED {total_aed:,.2f}",    "@ AED 4.5 / m³",              None,          c4)
-
-    c5, c6, c7, c8 = st.columns(4)
-    kpi_card("CO₂ Equivalent",        f"{total_co2:,.1f} kg",     "Water waste carbon cost",      None, c5)
-    kpi_card("High Usage Alerts",     str(high_cnt),               "Needs investigation",          None, c6)
-    kpi_card("Possible Leaks",        str(leak_cnt),               "Night-time anomalies",         None, c7)
-    kpi_card("Avg Daily Usage",       f"{avg_daily:,.0f} L",       f"Peak: {top_loc}",             None, c8)
-
-    st.markdown("---")
-
-    # ── Chart 1: Daily usage with rolling avg + forecast ──────────
-    section("📈 Daily Usage Trend · Actual vs Expected · 7-Day Forecast")
-
-    daily = (
-        df.groupby("Date")
-          .agg(Actual=("Actual_Usage_Litres","sum"), Expected=("Expected_Usage_Litres","sum"))
-          .reset_index()
-          .sort_values("Date")
-    )
-    daily["Rolling_7d"] = daily["Actual"].rolling(7, min_periods=2).mean()
-    fcast = forecast_7d(df)
-
-    fig_daily = go.Figure()
-    # Expected band
-    fig_daily.add_trace(go.Scatter(
-        x=daily["Date"], y=daily["Expected"],
-        name="Expected", mode="lines",
-        line=dict(color="#90caf9", width=1.5, dash="dot"),
-        fill="tozeroy", fillcolor="rgba(144,202,249,0.08)",
-    ))
-    # Actual
-    fig_daily.add_trace(go.Scatter(
-        x=daily["Date"], y=daily["Actual"],
-        name="Actual", mode="lines+markers",
-        line=dict(color="#0077b6", width=2.5),
-        marker=dict(size=4),
-    ))
-    # 7-day rolling average
-    fig_daily.add_trace(go.Scatter(
-        x=daily["Date"], y=daily["Rolling_7d"],
-        name="7-Day Average", mode="lines",
-        line=dict(color="#f59e0b", width=2, dash="dash"),
-    ))
-    # Forecast confidence band
-    if not fcast.empty:
-        fig_daily.add_trace(go.Scatter(
-            x=pd.concat([fcast["Date"], fcast["Date"].iloc[::-1]]),
-            y=pd.concat([fcast["Upper"], fcast["Lower"].iloc[::-1]]),
-            fill="toself", fillcolor="rgba(0,180,216,0.12)",
-            line=dict(color="rgba(0,0,0,0)"),
-            name="Forecast Band", hoverinfo="skip",
-        ))
-        fig_daily.add_trace(go.Scatter(
-            x=fcast["Date"], y=fcast["Forecast"],
-            name="7-Day Forecast", mode="lines",
-            line=dict(color="#00b4d8", width=2, dash="longdash"),
-        ))
-
-    fig_daily.update_layout(
-        **CHART_LAYOUT, height=360,
-        xaxis_title="Date", yaxis_title="Litres",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-    )
-    style_axes(fig_daily)
-
-    st.plotly_chart(fig_daily, use_container_width=True)
-    st.caption("Forecast uses a 14-day linear trend projected 7 days forward. Shaded band = ±9% confidence range.")
-
-    st.markdown("---")
-
-    # ── Chart 2: Heatmap – Location × Time_Period ──────────────────
-    section("🌡️ Anomaly Heatmap · Location vs Time of Day")
-    st.caption("Average % deviation above expected. Red = consistent overuse; green = efficient.")
-
-    heat = (
-        df.groupby(["Location","Time_Period"])["Difference_Percentage"]
-          .mean()
-          .reset_index()
-    )
-    order_tp = ["Morning","Afternoon","Evening","Night"]
-    heat_pivot = (
-        heat.pivot(index="Location", columns="Time_Period", values="Difference_Percentage")
-            .reindex(columns=order_tp)
-    )
-    fig_heat = px.imshow(
-        heat_pivot,
-        color_continuous_scale="RdYlGn_r",
-        aspect="auto",
-        text_auto=".1f",
-        zmin=-10, zmax=35,
-        labels=dict(color="Δ% vs Expected"),
-    )
-    fig_heat.update_layout(**CHART_LAYOUT, height=280,
-                           coloraxis_colorbar=dict(title="Δ%", thickness=14))
-    fig_heat.update_traces(textfont=dict(size=11, color="#ffffff"))
-    fig_heat.update_xaxes(tickfont=dict(color="#1e293b", size=12))
-    fig_heat.update_yaxes(tickfont=dict(color="#1e293b", size=12))
-    style_axes(fig_heat)
-
-    st.plotly_chart(fig_heat, use_container_width=True)
-
-    st.markdown("---")
-
-    # ── Chart 3: Usage by location stacked ────────────────────────
-    section("🏢 Water Usage by Location")
-
-    loc_sum = (
-        df.groupby("Location")
-          .agg(Actual=("Actual_Usage_Litres","sum"), Expected=("Expected_Usage_Litres","sum"))
-          .reset_index()
-          .sort_values("Actual", ascending=False)
-    )
-    fig_loc = go.Figure()
-    fig_loc.add_trace(go.Bar(x=loc_sum["Location"], y=loc_sum["Actual"],   name="Actual",   marker_color="#0077b6"))
-    fig_loc.add_trace(go.Bar(x=loc_sum["Location"], y=loc_sum["Expected"], name="Expected", marker_color="#90e0ef"))
-    fig_loc.update_layout(
-        **CHART_LAYOUT, barmode="group", height=340,
-        xaxis_title="Location", yaxis_title="Total Litres",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-    )
-    style_axes(fig_loc)
-
-    st.plotly_chart(fig_loc, use_container_width=True)
-
-
-# ════════════════════════════════════════════════════════════════════
-# PAGE 2 — LOCATION ANALYSIS
-# ════════════════════════════════════════════════════════════════════
-elif page == "📍 Location Analysis":
-    section("📍 Location Analysis")
-    st.caption("Occupancy-adjusted water efficiency, benchmarking, and risk ranking by campus location.")
-    st.markdown("---")
-
-    # Build location summary
-    loc_tbl = (
-        df.groupby("Location").agg(
-            Total_Actual        =("Actual_Usage_Litres",   "sum"),
-            Total_Expected      =("Expected_Usage_Litres",  "sum"),
-            Avoidable_Excess    =("Avoidable_Excess_Litres","sum"),
-            AED_Savings         =("Estimated_AED_Savings",  "sum"),
-            CO2_kg              =("CO2_Equivalent_kg",       "sum"),
-            Avg_L_Per_Person    =("Usage_Per_Person",        "mean"),
-            Alert_Count         =("Alert_Category",
-                                  lambda x: x.isin(["Monitor","High Usage Alert",
-                                                     "Possible Leak","Priority Inspection"]).sum()),
-            Worst_Alert         =("Alert_Weight",            "max"),
-        )
-        .reset_index()
-    )
-    loc_tbl["Diff_Pct"] = (
-        (loc_tbl["Total_Actual"] - loc_tbl["Total_Expected"])
-        / loc_tbl["Total_Expected"].replace(0, np.nan) * 100
-    ).round(1)
-    # Efficiency score per location (0-100)
-    loc_tbl["Efficiency_Score"] = loc_tbl.apply(
-        lambda r: max(0, min(100, 100 - r["Diff_Pct"])) if r["Diff_Pct"] > 0 else 100, axis=1
-    ).round(0)
-    loc_tbl = loc_tbl.sort_values("Total_Actual", ascending=False)
-
-    # ── Efficiency ranking ─────────────────────────────────────────
-    section("🏆 Efficiency Ranking (Occupancy-Adjusted)")
-    st.caption(f"L/person = average litres consumed per occupant per reading. UAE benchmark: {UAE_BENCH_L_PERSON_DAY:.0f} L/person/day.")
-
-    eff_sorted = loc_tbl.sort_values("Avg_L_Per_Person")
-    for _, row in eff_sorted.iterrows():
-        lpp        = row["Avg_L_Per_Person"]
-        vs_bench   = lpp - (UAE_BENCH_L_PERSON_DAY / 4)  # per reading (~quarter of a day)
-        bar_pct    = min(100, (lpp / (UAE_BENCH_L_PERSON_DAY / 2)) * 100)
-        bar_color  = "#22c55e" if vs_bench <= 0 else ("#f59e0b" if vs_bench < 20 else "#ef4444")
-        grade_s, gc = score_grade(row["Efficiency_Score"])
-        col_a, col_b, col_c = st.columns([2, 4, 1])
-        with col_a:
-            st.markdown(f"**{row['Location']}**  "
-                        f"<span style='color:{gc};font-weight:900;'>{grade_s}</span>",
-                        unsafe_allow_html=True)
-        with col_b:
-            st.markdown(
-                f'<div class="bench-bar-wrap">'
-                f'<div class="bench-bar" style="width:{bar_pct:.0f}%;background:{bar_color};"></div>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-        with col_c:
-            st.markdown(f"`{lpp:.0f} L/p`")
-
-    st.markdown("---")
-
-    # ── Summary table ──────────────────────────────────────────────
-    section("📋 Location-wise Summary Table")
-
-    disp = loc_tbl.copy()
-    disp_show = pd.DataFrame({
-        "Location":           disp["Location"],
-        "Total Actual (L)":   disp["Total_Actual"].map("{:,.0f}".format),
-        "Total Expected (L)": disp["Total_Expected"].map("{:,.0f}".format),
-        "Excess (L)":         disp["Avoidable_Excess"].map("{:,.0f}".format),
-        "Diff %":             disp["Diff_Pct"].map("{:+.1f}%".format),
-        "AED Savings":        disp["AED_Savings"].map("AED {:.2f}".format),
-        "CO₂ Saved (kg)":     disp["CO2_kg"].map("{:.2f}".format),
-        "L/Person":           disp["Avg_L_Per_Person"].map("{:.1f}".format),
-        "Alerts":             disp["Alert_Count"].astype(int),
-    })
-    st.dataframe(disp_show, use_container_width=True, hide_index=True)
-
-    st.markdown("---")
-
-    # ── Chart: Actual vs Expected ──────────────────────────────────
-    section("📊 Actual vs Expected by Location")
-    fig_ae = go.Figure()
-    fig_ae.add_trace(go.Bar(x=loc_tbl["Location"], y=loc_tbl["Total_Actual"],    name="Actual",    marker_color="#0077b6"))
-    fig_ae.add_trace(go.Bar(x=loc_tbl["Location"], y=loc_tbl["Total_Expected"],  name="Expected",  marker_color="#48cae4"))
-    fig_ae.add_trace(go.Bar(x=loc_tbl["Location"], y=loc_tbl["Avoidable_Excess"],name="Avoidable", marker_color="#ef4444", opacity=0.75))
-    fig_ae.update_layout(
-        **CHART_LAYOUT, barmode="group", height=360,
-        xaxis_title="Location", yaxis_title="Total Litres",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-    )
-    style_axes(fig_ae)
-
-    st.plotly_chart(fig_ae, use_container_width=True)
-
-    st.markdown("---")
-
-    # ── Chart: Bubble — Usage vs Occupancy ────────────────────────
-    section("🔵 Usage vs Occupancy Bubble Chart")
-    st.caption("Bubble size = estimated AED savings. Locations outside the trend line may have inefficient fixtures or practices.")
-
-    bub = df.groupby("Location").agg(
-        Avg_Actual  =("Actual_Usage_Litres", "mean"),
-        Avg_Occ     =("Occupancy_Count",     "mean"),
-        AED         =("Estimated_AED_Savings","sum"),
-    ).reset_index()
-    fig_bub = px.scatter(
-        bub, x="Avg_Occ", y="Avg_Actual",
-        size="AED", color="Location",
-        text="Location",
-        size_max=60,
-        labels={"Avg_Occ":"Avg Occupancy","Avg_Actual":"Avg Actual Usage (L)"},
-        height=380,
-    )
-    fig_bub.update_traces(textposition="top center", marker=dict(opacity=0.8))
-    fig_bub.update_layout(**CHART_LAYOUT, showlegend=False)
-    style_axes(fig_bub)
-
-    st.plotly_chart(fig_bub, use_container_width=True)
-
-    st.markdown("---")
-
-    # ── UAE Benchmark comparison ───────────────────────────────────
-    section("🌍 UAE Benchmark Comparison")
-    st.caption(f"UAE university benchmark: {UAE_BENCH_L_PERSON_DAY:.0f} L/person/day. "
-               "Locations above this line may benefit from awareness campaigns and fixture upgrades.")
-
-    bench_per_reading = UAE_BENCH_L_PERSON_DAY / len(TIME_PERIODS)
-    bcomp = loc_tbl[["Location","Avg_L_Per_Person"]].copy()
-    bcomp["Benchmark"] = bench_per_reading
-    bcomp["Status"]    = bcomp["Avg_L_Per_Person"].apply(
-        lambda x: "Above Benchmark" if x > bench_per_reading else "Within Benchmark"
-    )
-    fig_bench = go.Figure()
-    fig_bench.add_trace(go.Bar(
-        x=bcomp["Location"], y=bcomp["Avg_L_Per_Person"],
-        name="Campus (L/person)", marker_color=[
-            "#ef4444" if s == "Above Benchmark" else "#22c55e"
-            for s in bcomp["Status"]
-        ],
-    ))
-    fig_bench.add_hline(
-        y=bench_per_reading, line_dash="dash", line_color="#f59e0b",
-        annotation_text=f"UAE Benchmark ({bench_per_reading:.0f} L/p/reading)",
-        annotation_position="top right",
-    )
-    fig_bench.update_layout(**CHART_LAYOUT, height=320,
-                            xaxis_title="Location", yaxis_title="Avg L / Person")
-    style_axes(fig_bench)
-
-    st.plotly_chart(fig_bench, use_container_width=True)
-
-
-# ════════════════════════════════════════════════════════════════════
-# PAGE 3 — LEAK DETECTION
-# ════════════════════════════════════════════════════════════════════
-elif page == "🔍 Leak Detection":
-    section("🔍 Leak Detection & Anomaly Intelligence")
-    st.caption("Rule-based alerts enhanced with statistical Z-score confidence scoring.")
-    st.markdown("---")
-
-    # ── Summary counts ─────────────────────────────────────────────
-    alert_types = ["Priority Inspection","Possible Leak","High Usage Alert","Monitor","Normal Variation"]
-    cols_ac = st.columns(5)
-    for i, at in enumerate(alert_types):
-        cnt = (df["Alert_Category"] == at).sum()
-        cols_ac[i].metric(at, cnt)
-
-    st.markdown("---")
-
-    # ── Filters ────────────────────────────────────────────────────
-    col_f1, col_f2, col_f3 = st.columns(3)
-    with col_f1:
-        filter_locs   = st.multiselect("Location", sorted(df["Location"].unique()),
-                                        default=sorted(df["Location"].unique()), key="leak_loc")
-    with col_f2:
-        filter_alerts = st.multiselect("Alert Type",
-                                        ["Priority Inspection","Possible Leak","High Usage Alert","Monitor"],
-                                        default=["Priority Inspection","Possible Leak","High Usage Alert","Monitor"],
-                                        key="leak_alert")
-    with col_f3:
-        filter_conf   = st.multiselect("Confidence",
-                                        ["Very High","High","Medium","Low"],
-                                        default=["Very High","High","Medium"],
-                                        key="leak_conf")
-
-    filt = df[
-        (df["Location"].isin(filter_locs)) &
-        (df["Alert_Category"].isin(filter_alerts)) &
-        (df["Alert_Confidence"].isin(filter_conf))
-    ]
-    st.markdown(f"**{len(filt):,} records** match the current filters.")
-
-    # ── Alert timeline heatmap ─────────────────────────────────────
-    section("🗓️ Alert Timeline Heatmap · Location × Date")
-    st.caption("Colour intensity = severity level. Dark purple = Priority Inspection. Quickly spot recurring problem areas.")
-
-    tl = df.copy()
-    tl["Alert_Num"] = tl["Alert_Weight"]
-    tl_piv = tl.pivot_table(index="Location", columns="Date", values="Alert_Num", aggfunc="max")
-    tl_piv.columns = [d.strftime("%d %b") for d in tl_piv.columns]
-
-    fig_tl = px.imshow(
-        tl_piv,
-        color_continuous_scale=["#f0fdf4","#fef9c3","#fee2e2","#dbeafe","#ede9fe"],
-        aspect="auto",
-        zmin=0, zmax=4,
-        labels=dict(color="Severity"),
-    )
-    fig_tl.update_layout(**CHART_LAYOUT, height=240,
-                         xaxis=dict(tickangle=-45, tickfont=dict(color="#1e293b", size=10)),
-                         yaxis=dict(tickfont=dict(color="#1e293b", size=12)),
-                         coloraxis_colorbar=dict(
-                             tickvals=[0,1,2,3,4],
-                             ticktext=["Normal","Monitor","High","Leak","Priority"],
-                             thickness=14, title="",
-                         ))
-    style_axes(fig_tl)
-
-    st.plotly_chart(fig_tl, use_container_width=True)
-
-    st.markdown("---")
-
-    # ── Alert distribution ─────────────────────────────────────────
-    col_pie, col_bar = st.columns([1, 2])
-    with col_pie:
-        section("Distribution")
-        ac = df["Alert_Category"].value_counts().reset_index()
-        ac.columns = ["Alert","Count"]
-        fig_pie = px.pie(
-            ac, names="Alert", values="Count", hole=0.48,
-            color="Alert",
-            color_discrete_map={k: v for k, v in ALERT_COLOR.items()},
-            height=280,
-        )
-        fig_pie.update_layout(paper_bgcolor="white", margin=dict(l=0,r=0,t=20,b=0),
-                               legend=dict(orientation="v", font=dict(size=10)))
-        st.plotly_chart(fig_pie, use_container_width=True)
-
-    with col_bar:
-        section("Alerts Over Time")
-        bad = df[df["Alert_Category"] != "Normal Variation"].copy()
-        if not bad.empty:
-            bad["Week"] = bad["Date"].dt.to_period("W").astype(str)
-            weekly = bad.groupby(["Week","Alert_Category"]).size().reset_index(name="Count")
-            fig_wk = px.bar(
-                weekly, x="Week", y="Count", color="Alert_Category",
-                color_discrete_map=ALERT_COLOR, height=280,
-                labels={"Alert_Category":"Alert","Week":""},
-            )
-            fig_wk.update_layout(**CHART_LAYOUT, barmode="stack",
-                                  legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0))
-            st.plotly_chart(fig_wk, use_container_width=True)
-
-    st.markdown("---")
-
-    # ── Flagged records table ──────────────────────────────────────
-    section("📋 Flagged Records with Confidence Score")
-    if filt.empty:
-        st.info("No records match current filters.")
-    else:
-        show_cols = filt[[
-            "Date","Location","Time_Period",
-            "Actual_Usage_Litres","Expected_Usage_Litres",
-            "Difference_Percentage","Z_Score",
-            "Alert_Category","Alert_Confidence","Notes",
-        ]].copy()
-        show_cols["Date"]                 = show_cols["Date"].dt.strftime("%Y-%m-%d")
-        show_cols["Difference_Percentage"]= show_cols["Difference_Percentage"].round(1)
-        show_cols["Z_Score"]              = show_cols["Z_Score"].round(2)
-        show_cols                         = show_cols.sort_values(
-            by=["Alert_Confidence","Difference_Percentage"],
-            ascending=[False, False],
-        )
-        st.dataframe(show_cols, use_container_width=True, hide_index=True)
-
-    st.markdown("---")
-
-    # ── Priority action table ──────────────────────────────────────
-    section("🚨 Priority Action Table")
-
-    prio_meta = {
-        "Priority Inspection": ("🔴 Urgent",   "Repeated ≥25% excess on ≥2 days",           "Immediate on-site inspection — pipes, fixtures, isolation valves"),
-        "Possible Leak":       ("🟠 High",     "Night-time excess ≥25% (low occupancy)",     "Check overnight valve seals, cisterns, auto-fill mechanisms"),
-        "High Usage Alert":    ("🟡 Medium",   "Single-day excess ≥25%",                     "Review usage event; check for open taps or equipment faults"),
-        "Monitor":             ("🟢 Low",      "Excess 15–25% above expected",               "Track for 3+ days; escalate if trend continues"),
-    }
-    prows = []
-    for at, (pri, reason, action) in prio_meta.items():
-        for loc in df[df["Alert_Category"] == at]["Location"].unique():
-            cnt = (df[(df["Alert_Category"] == at) & (df["Location"] == loc)]).shape[0]
-            prows.append({"Priority": pri, "Location": loc, "Alert": at,
-                          "Occurrences": cnt, "Reason": reason, "Action": action})
-    if prows:
-        pdf = pd.DataFrame(prows).sort_values(
-            by="Priority", key=lambda s: s.map({"🔴 Urgent":0,"🟠 High":1,"🟡 Medium":2,"🟢 Low":3})
-        )
-        st.dataframe(pdf, use_container_width=True, hide_index=True)
-    else:
-        st.success("✅ No priority actions for current selection.")
-
-
-# ════════════════════════════════════════════════════════════════════
-# PAGE 4 — AI RECOMMENDATIONS
-# ════════════════════════════════════════════════════════════════════
-elif page == "🤖 AI Recommendations":
-    section("🤖 AI-Powered Recommendations")
-    st.caption("Data-driven insights generated from the campus water usage patterns. Ranked by estimated AED impact.")
-    st.markdown("---")
-
-    # ── Build recommendation objects ───────────────────────────────
-    recs = []   # {rank, icon, tag, loc, text, aed_impact, action_type}
-
-    # 1. Priority Inspection locations
-    for loc in df[df["Alert_Category"] == "Priority Inspection"]["Location"].unique():
-        cnt     = (df[(df["Alert_Category"] == "Priority Inspection") & (df["Location"] == loc)]).shape[0]
-        aed_imp = df[(df["Location"] == loc)]["Estimated_AED_Savings"].sum()
-        recs.append(dict(
-            icon="🔴", tag="URGENT – PRIORITY INSPECTION", loc=loc,
-            text=(
-                f"<b>{loc}</b> has triggered Priority Inspection alerts on multiple days ({cnt} readings). "
-                "Repeated high consumption indicates a persistent fault — likely a running tap, faulty flush valve, "
-                "or distribution pipe leak. Schedule an immediate physical inspection; do not wait for the next meter cycle."
-            ),
-            aed=aed_imp,
-        ))
-
-    # 2. Possible Leaks (night-time)
-    for loc in df[df["Alert_Category"] == "Possible Leak"]["Location"].unique():
-        cnt     = (df[(df["Alert_Category"] == "Possible Leak") & (df["Location"] == loc)]).shape[0]
-        max_pct = df[(df["Alert_Category"] == "Possible Leak") & (df["Location"] == loc)]["Difference_Percentage"].max()
-        aed_imp = df[(df["Location"] == loc) & (df["Alert_Category"] == "Possible Leak")]["Estimated_AED_Savings"].sum()
-        recs.append(dict(
-            icon="🔵", tag="LEAK RISK – NIGHT USAGE", loc=loc,
-            text=(
-                f"Night-time water flow at <b>{loc}</b> exceeded expected by up to <b>{max_pct:.0f}%</b> "
-                f"on {cnt} occasion(s). With minimal occupancy at night, this excess strongly suggests a hidden leak. "
-                "Inspect overflow valves, auto-fill cisterns, and any unmetered supply lines. "
-                "Consider installing an automatic shut-off valve on this line between 23:00–05:00."
-            ),
-            aed=aed_imp,
-        ))
-
-    # 3. Irrigation-specific
-    irr_locs = df[
-        (df["Alert_Category"].isin(["High Usage Alert","Priority Inspection"])) &
-        (df["Location"].str.contains("Garden|Irrigation", case=False, na=False))
-    ]["Location"].unique()
-    for loc in irr_locs:
-        excess = df[(df["Location"] == loc)]["Avoidable_Excess_Litres"].sum()
-        aed_imp= df[(df["Location"] == loc)]["Estimated_AED_Savings"].sum()
-        recs.append(dict(
-            icon="🌿", tag="IRRIGATION EFFICIENCY", loc=loc,
-            text=(
-                f"<b>{loc}</b> shows excess usage of <b>{excess:,.0f} L</b> above baseline. "
-                "Recommendations: (1) Shift irrigation to 05:00–07:00 to cut evaporation losses by 20–30%. "
-                "(2) Install soil-moisture sensors to trigger demand-based watering only. "
-                "(3) Reduce run duration by 15% and monitor for 7 days before adjusting further."
-            ),
-            aed=aed_imp,
-        ))
-
-    # 4. Cafeteria
-    cafe_locs = df[
-        (df["Alert_Category"].isin(["High Usage Alert","Priority Inspection","Monitor"])) &
-        (df["Location"].str.contains("Cafeteria|Pantry", case=False, na=False))
-    ]["Location"].unique()
-    for loc in cafe_locs:
-        pm_excess = df[(df["Location"] == loc) & (df["Time_Period"] == "Afternoon")]["Avoidable_Excess_Litres"].sum()
-        aed_imp = df[(df["Location"] == loc)]["Estimated_AED_Savings"].sum()
-        recs.append(dict(
-            icon="🍽️", tag="CAFETERIA / FOOD PREP", loc=loc,
-            text=(
-                f"Afternoon excess of <b>{pm_excess:,.0f} L</b> detected at <b>{loc}</b>. "
-                "Common causes: extended pre-rinse cycles, dishwasher pre-soak overuse, or staff running taps during prep. "
-                "Introduce a water-use checklist for catering staff. "
-                "Installing flow restrictors on prep sinks can reduce consumption by 15–20% with no impact on operations."
-            ),
-            aed=aed_imp,
-        ))
-
-    # 5. Washroom fixtures
-    wash_locs = df[
-        (df["Alert_Category"].isin(["High Usage Alert","Priority Inspection"])) &
-        (df["Location"].str.contains("Washroom|Block", case=False, na=False))
-    ]["Location"].unique()
-    for loc in wash_locs:
-        excess = df[(df["Location"] == loc)]["Avoidable_Excess_Litres"].sum()
-        aed_imp = df[(df["Location"] == loc)]["Estimated_AED_Savings"].sum()
-        recs.append(dict(
-            icon="🚿", tag="FIXTURE MAINTENANCE", loc=loc,
-            text=(
-                f"Excess usage of <b>{excess:,.0f} L</b> at <b>{loc}</b>. "
-                "Prioritise: (1) Replace dual-flush cisterns if >5 years old — faulty internals waste up to 200 L/day each. "
-                "(2) Check tap aerators quarterly — a 2mm drip wastes ~90 L/day. "
-                "(3) Sensor-activated taps in high-traffic washrooms reduce usage by up to 30%."
-            ),
-            aed=aed_imp,
-        ))
-
-    # 6. Night-time general
-    night_excess = df[(df["Time_Period"] == "Night") & (df["Avoidable_Excess_Litres"] > 0)]["Avoidable_Excess_Litres"].sum()
-    if night_excess > 300:
-        recs.append(dict(
-            icon="🌙", tag="NIGHT-TIME MANAGEMENT", loc="All Locations",
-            text=(
-                f"Total campus night-time avoidable excess: <b>{night_excess:,.0f} L</b> "
-                f"(AED {night_excess/1000*WATER_COST_AED_PER_M3:.2f} estimated cost). "
-                "With minimal occupancy after 22:00, any significant flow is abnormal. "
-                "Install zone-level automated shutoff on non-critical lines (washrooms, cafeteria) between 23:00–05:30. "
-                "Smart-valve solutions cost approximately AED 400–800 per zone — payback period under 6 months at current rates."
-            ),
-            aed=night_excess / 1000 * WATER_COST_AED_PER_M3,
-        ))
-
-    # 7. CO₂ impact awareness
-    total_co2 = df["CO2_Equivalent_kg"].sum()
-    trees_eq   = max(1, int(total_co2 / 100))
-    recs.append(dict(
-        icon="🌍", tag="ENVIRONMENTAL IMPACT", loc="Campus-wide",
-        text=(
-            f"The <b>{total_co2:.1f} kg CO₂</b> equivalent from avoidable water waste "
-            f"corresponds to approximately <b>{trees_eq} trees'</b> annual carbon absorption. "
-            "Addressing identified waste aligns with <b>SDG 6</b> and the "
-            "<b>UAE Water Security Strategy 2036</b>. "
-            "Report these figures quarterly to Senior Management — "
-            "environmental KPIs are increasingly tied to university accreditation and rankings."
-        ),
-        aed=0,
-    ))
-
-    # 8. Monitor locations — generic trend warning
-    mon_locs = df[df["Alert_Category"] == "Monitor"]["Location"].unique()
-    for loc in mon_locs[:2]:
-        recs.append(dict(
-            icon="🟡", tag="MONITOR – TREND WATCH", loc=loc,
-            text=(
-                f"<b>{loc}</b> is in the 15–25% excess band. While not yet critical, "
-                "this often precedes a high-usage event. Set a 7-day monitoring window. "
-                "If excess persists, check for behavioural changes (new equipment, event bookings, staffing changes) "
-                "before escalating to a physical inspection."
-            ),
-            aed=df[(df["Location"] == loc)]["Estimated_AED_Savings"].sum(),
-        ))
-
-    # Sort by AED impact (descending), remove duplicates
-    recs_deduped = []
-    seen_loc_tag = set()
-    for r in sorted(recs, key=lambda x: x["aed"], reverse=True):
-        key = (r["loc"], r["tag"])
-        if key not in seen_loc_tag:
-            seen_loc_tag.add(key)
-            recs_deduped.append(r)
-
-    # ── Savings Roadmap ────────────────────────────────────────────
-    section("🗺️ Savings Roadmap · Ranked by Impact")
-    st.caption("Prioritised action list. Address top items first for maximum water and cost reduction.")
-
-    for i, rec in enumerate(recs_deduped, 1):
-        aed_str = f"AED {rec['aed']:,.2f}" if rec["aed"] > 0 else "—"
-        st.markdown(f"""
-        <div class="roadmap-row">
-          <div class="roadmap-rank">#{i}</div>
-          <div>
-            <div class="roadmap-loc">{rec['icon']} {rec['loc']}</div>
-            <div class="roadmap-action">{rec['tag']}</div>
-          </div>
-          <div class="roadmap-aed">{aed_str}</div>
-        </div>
+        <hr style="border-color:#2a5a8a;margin:8px 0 14px">
         """, unsafe_allow_html=True)
 
-    st.markdown("---")
+        page = st.radio("Navigate", [
+            "🏠  Overview Dashboard",
+            "📍  Location Analysis",
+            "🚨  Leak Detection",
+            "🤖  AI Recommendations",
+            "📊  Impact Report",
+            "ℹ️  About NabdFlow",
+        ], label_visibility="collapsed")
 
-    # ── Detailed recommendation cards ─────────────────────────────
-    section("💡 Detailed Insights")
+        st.markdown("<hr style='border-color:#2a5a8a;margin:14px 0'>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size:12px;font-weight:700;color:#94d2bd;margin-bottom:6px'>📁 DATA SOURCE</div>",
+                    unsafe_allow_html=True)
+        uploaded   = st.file_uploader("Upload CSV / Excel", type=["csv","xlsx","xls"],
+                                       label_visibility="collapsed")
+        use_sample = st.checkbox("Use built-in sample data",
+                                  value=(uploaded is None))
 
-    if not recs_deduped:
-        st.success("✅ No significant anomalies — campus water usage is within normal range.")
-    else:
-        for rec in recs_deduped:
-            st.markdown(f"""
-            <div class="rec-card">
-              <div style="margin-bottom:5px;">
-                <span style="font-size:1.3rem;">{rec['icon']}</span>
-                <b style="color:#0077b6;font-size:0.76rem;text-transform:uppercase;
-                          letter-spacing:0.08em;">{rec['tag']}</b>
-                {f'<span style="float:right;background:#e0f2fe;color:#0077b6;font-weight:800;'
-                  f'font-size:0.8rem;padding:2px 10px;border-radius:12px;">AED {rec["aed"]:,.2f}</span>'
-                  if rec["aed"] > 0 else ''}
-              </div>
-              <div style="color:#334155;font-size:0.92rem;line-height:1.55;">{rec['text']}</div>
-            </div>
-            """, unsafe_allow_html=True)
-
-
-# ════════════════════════════════════════════════════════════════════
-# PAGE 5 — IMPACT REPORT
-# ════════════════════════════════════════════════════════════════════
-elif page == "📄 Impact Report":
-    section("📄 Sustainability Impact Report")
-    st.caption("Structured summary for management reporting, grant applications, and sustainability audits.")
-    st.markdown("---")
-
-    # User inputs
-    col_in1, col_in2 = st.columns(2)
-    with col_in1:
-        people_reached  = st.number_input("Estimated students/staff reached", min_value=1, value=250, step=10)
-        pilot_location  = st.text_input("Pilot Location", value="Main University Campus")
-        pilot_weeks     = st.slider("Pilot Duration (weeks)", 2, 16, 6)
-    with col_in2:
-        red_target      = st.slider("Water Reduction Target (%)", 5, 35, 15, 1)
-        report_title    = st.text_input("Report Title", value="NabdFlow Campus Water Intelligence Report")
-        reporting_period= st.text_input("Reporting Period", value=f"{d0.strftime('%d %b %Y')} – {d1.strftime('%d %b %Y')}")
-
-    st.markdown("---")
-
-    # Computed figures
-    total_actual    = df["Actual_Usage_Litres"].sum()
-    total_avoid     = df["Avoidable_Excess_Litres"].sum()
-    total_aed       = df["Estimated_AED_Savings"].sum()
-    total_co2       = df["CO2_Equivalent_kg"].sum()
-    trees_eq        = max(1, int(total_co2 / 100))
-    score           = sustainability_score(df)
-    grade, gclr     = score_grade(score)
-    high_cnt        = df[df["Alert_Category"].isin(["High Usage Alert","Priority Inspection"])].shape[0]
-    leak_cnt        = df[df["Alert_Category"] == "Possible Leak"].shape[0]
-    prio_cnt        = df[df["Alert_Category"] == "Priority Inspection"].shape[0]
-    total_alerts    = high_cnt + leak_cnt + prio_cnt
-
-    proj_save_l     = total_actual * (red_target / 100)
-    proj_save_aed   = (proj_save_l / 1000) * WATER_COST_AED_PER_M3
-    proj_save_co2   = (proj_save_l / 1000) * CO2_KG_PER_M3
-    per_person      = proj_save_l / people_reached if people_reached else 0
-
-    # ── Report ─────────────────────────────────────────────────────
-    st.markdown('<div class="report-box">', unsafe_allow_html=True)
-
-    st.markdown(f"## 💧 {report_title}")
-    st.markdown(f"**Reporting Period:** {reporting_period}  |  **Generated:** {datetime.now().strftime('%d %B %Y %H:%M')}")
-
-    st.markdown("---")
-
-    # Headline score
-    col_s1, col_s2 = st.columns([1, 2])
-    with col_s1:
-        st.markdown(f"""
-        <div style="text-align:center;background:linear-gradient(135deg,#03045e,#0077b6);
-                    border-radius:16px;padding:24px;color:#fff;">
-          <div style="font-size:0.8rem;letter-spacing:0.1em;color:#90caf9;">CAMPUS SCORE</div>
-          <div style="font-size:4rem;font-weight:900;line-height:1;">{score:.0f}</div>
-          <div style="font-size:2rem;font-weight:800;color:{gclr};">{grade}</div>
-          <div style="font-size:0.78rem;color:#90caf9;margin-top:4px;">Water Sustainability Index</div>
+        st.markdown("<hr style='border-color:#2a5a8a;margin:14px 0'>", unsafe_allow_html=True)
+        st.markdown("""
+        <div style="font-size:10px;color:#7aacca;text-align:center;padding-bottom:8px">
+          NabdFlow v1.0 · 2026<br>
+          <span style="color:#94d2bd">🌱 Powered by Sustainability</span>
         </div>""", unsafe_allow_html=True)
-    with col_s2:
-        r1, r2, r3 = st.columns(3)
-        r1.metric("Total Usage",       f"{total_actual/1000:,.1f} m³")
-        r2.metric("Avoidable Waste",   f"{total_avoid/1000:,.2f} m³")
-        r3.metric("AED Potential Savings", f"AED {total_aed:,.2f}")
-        r4, r5, r6 = st.columns(3)
-        r4.metric("CO₂ Equivalent",    f"{total_co2:.1f} kg",  f"≈ {trees_eq} trees/yr")
-        r5.metric("Total Alerts",      str(total_alerts))
-        r6.metric("Priority Actions",  str(prio_cnt + leak_cnt))
+    return page, uploaded, use_sample
 
-    st.markdown("---")
-    st.markdown("#### 🎯 Projections (if reduction target achieved)")
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE 1 — OVERVIEW
+# ══════════════════════════════════════════════════════════════════════════════
+def pg_overview(df):
+    st.markdown('<div class="pg-title">🏠 Overview Dashboard</div>', unsafe_allow_html=True)
+    st.markdown('<div class="pg-sub">Campus-wide water consumption snapshot — real-time intelligence at a glance</div>',
+                unsafe_allow_html=True)
 
-    p1, p2, p3, p4 = st.columns(4)
-    p1.metric("Reduction Target",   f"{red_target}%")
-    p2.metric("Water Saved",        f"{proj_save_l:,.0f} L",    f"{proj_save_l/1000:,.1f} m³")
-    p3.metric("AED Saved",          f"AED {proj_save_aed:,.2f}")
-    p4.metric("CO₂ Avoided",        f"{proj_save_co2:.1f} kg")
+    # KPIs
+    tot_act  = df["Actual_Usage_Litres"].sum()
+    tot_exp  = df["Expected_Usage_Litres"].sum()
+    tot_exc  = df["Avoidable_Litres"].sum()
+    tot_save = df["AED_Savings"].sum()
+    n_high   = df[df["Alert"].isin(["High Usage Alert","Priority Inspection"])].shape[0]
+    n_leak   = df[df["Alert"]=="Possible Leak"].shape[0]
+    top_loc  = df.groupby("Location")["Actual_Usage_Litres"].sum().idxmax()
+    avg_day  = df.groupby("Date")["Actual_Usage_Litres"].sum().mean()
 
-    q1, q2 = st.columns(2)
-    q1.metric("People Reached",     f"{people_reached:,}")
-    q2.metric("Saving per Person",  f"{per_person:,.1f} L")
+    c1,c2,c3,c4 = st.columns(4)
+    with c1: kpi("💧 Total Water Used",   f"{tot_act/1000:,.1f} m³",   f"{tot_act:,.0f} L")
+    with c2: kpi("📋 Expected Usage",     f"{tot_exp/1000:,.1f} m³",   f"{tot_exp:,.0f} L")
+    with c3: kpi("♻️ Avoidable Excess",   f"{tot_exc/1000:,.1f} m³",   f"{tot_exc:,.0f} L", "warn")
+    with c4: kpi("💰 Est. AED Savings",   f"AED {tot_save:,.1f}",      "Recoverable cost",  "good")
 
-    st.markdown("---")
-    st.markdown("#### 🌍 Strategic Alignment")
+    c5,c6,c7,c8 = st.columns(4)
+    with c5: kpi("🚨 High Usage Alerts",  str(n_high),  "Incidents detected", "alert")
+    with c6: kpi("🔴 Possible Leaks",     str(n_leak),  "Night anomalies",    "alert")
+    with c7: kpi("📍 Top Usage Location", top_loc,      "Most water-intensive")
+    with c8: kpi("📅 Avg Daily Usage",    f"{avg_day/1000:,.1f} m³", "Per day campus-wide")
 
-    st.markdown("""
-    <span class="sdg-chip">SDG 6: Clean Water</span>
-    <span class="sdg-chip">SDG 12: Responsible Consumption</span>
-    <span class="sdg-chip">UAE Water Security Strategy 2036</span>
-    <span class="sdg-chip">Smart Water Management</span>
-    <span class="sdg-chip">UAE Quality of Life Strategy</span>
-    """, unsafe_allow_html=True)
+    st.markdown("<hr>", unsafe_allow_html=True)
 
-    st.markdown("")
-    st.markdown("""
-    | Framework | Specific Alignment |
-    |-----------|-------------------|
-    | **SDG 6** | Real-time detection of waste; promotes efficient use of a scarce resource in an arid region |
-    | **SDG 12** | Quantifies and reduces institutional overconsumption through data intelligence |
-    | **UAE Water Security Strategy 2036** | Supports 26% water efficiency improvement target for public facilities |
-    | **UAE Smart Water Management** | Enables data-driven proactive management without additional sensor hardware |
-    | **Quality of Life Strategy** | Improves campus environment; promotes awareness and community responsibility |
-    """)
+    # Chart 1 — Daily actual vs expected
+    sec("📈 Daily Usage: Actual vs Expected")
+    daily = (df.groupby("Date")
+               .agg(Actual=("Actual_Usage_Litres","sum"),
+                    Expected=("Expected_Usage_Litres","sum"))
+               .reset_index())
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=daily["Date"], y=daily["Actual"]/1000,
+        name="Actual", mode="lines+markers",
+        line=dict(color=C["primary"], width=2.5), marker=dict(size=5),
+        fill="tozeroy", fillcolor="rgba(26,110,181,.09)"))
+    fig.add_trace(go.Scatter(x=daily["Date"], y=daily["Expected"]/1000,
+        name="Expected", mode="lines",
+        line=dict(color=C["secondary"], width=2, dash="dash")))
+    fig.update_yaxes(title_text="m³")
+    st.plotly_chart(chart_layout(fig), use_container_width=True)
 
-    st.markdown("</div>", unsafe_allow_html=True)
+    c_left, c_right = st.columns(2)
 
-    st.markdown("---")
+    # Chart 2 — Usage by location
+    with c_left:
+        sec("📍 Usage by Location")
+        ls = (df.groupby("Location")
+                .agg(Actual=("Actual_Usage_Litres","sum"),
+                     Expected=("Expected_Usage_Litres","sum"))
+                .reset_index().sort_values("Actual"))
+        fig2 = go.Figure()
+        fig2.add_trace(go.Bar(y=ls["Location"], x=ls["Actual"]/1000,
+            name="Actual", orientation="h", marker_color=C["primary"]))
+        fig2.add_trace(go.Bar(y=ls["Location"], x=ls["Expected"]/1000,
+            name="Expected", orientation="h", marker_color=C["accent"]))
+        fig2.update_layout(barmode="group", xaxis_title="m³")
+        st.plotly_chart(chart_layout(fig2, h=280), use_container_width=True)
 
-    # ── Visual: Projection chart ────────────────────────────────────
-    section("📊 Before vs After Projection")
-    fig_proj = go.Figure()
-    categories = ["Total Usage", "Expected Usage", "Avoidable Waste", "Projected Savings"]
-    values_cur = [total_actual/1000, df["Expected_Usage_Litres"].sum()/1000, total_avoid/1000, 0]
-    values_new = [
-        (total_actual - proj_save_l) / 1000,
-        df["Expected_Usage_Litres"].sum() / 1000,
-        max(0, total_avoid - proj_save_l) / 1000,
-        proj_save_l / 1000,
-    ]
-    fig_proj.add_trace(go.Bar(name="Current",  x=categories, y=values_cur, marker_color="#0077b6"))
-    fig_proj.add_trace(go.Bar(name="Projected",x=categories, y=values_new, marker_color="#22c55e", opacity=0.85))
-    fig_proj.update_layout(**CHART_LAYOUT, barmode="group", height=320,
-                           yaxis_title="m³", legend=dict(orientation="h", y=1.05))
-    style_axes(fig_proj)
+    # Chart 3 — Alert donut
+    with c_right:
+        sec("🎯 Alert Distribution")
+        ac = df["Alert"].value_counts().reset_index()
+        ac.columns = ["Alert","Count"]
+        fig3 = px.pie(ac, names="Alert", values="Count",
+                      color="Alert", color_discrete_map=ALERT_COL, hole=.5)
+        fig3.update_traces(textposition="outside", textinfo="percent+label")
+        fig3.update_layout(height=280, paper_bgcolor="white",
+                           margin=dict(l=8,r=8,t=18,b=8), showlegend=False,
+                           font=dict(family="Inter,sans-serif", size=12))
+        st.plotly_chart(fig3, use_container_width=True)
 
-    st.plotly_chart(fig_proj, use_container_width=True)
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE 2 — LOCATION ANALYSIS
+# ══════════════════════════════════════════════════════════════════════════════
+def pg_location(df):
+    st.markdown('<div class="pg-title">📍 Location Analysis</div>', unsafe_allow_html=True)
+    st.markdown('<div class="pg-sub">Drill into each campus zone — identify hotspots and savings opportunities</div>',
+                unsafe_allow_html=True)
 
-    st.markdown("---")
+    # Summary table
+    lt = (df.groupby("Location")
+            .agg(Actual   =("Actual_Usage_Litres","sum"),
+                 Expected =("Expected_Usage_Litres","sum"),
+                 Excess   =("Avoidable_Litres","sum"),
+                 Savings  =("AED_Savings","sum"),
+                 Alerts   =("Alert", lambda x: x.isin(
+                     ["High Usage Alert","Possible Leak","Priority Inspection"]).sum()))
+            .reset_index())
+    lt["Diff_%"]      = ((lt["Actual"]-lt["Expected"])/lt["Expected"]*100).round(1)
+    lt["Actual_m3"]   = (lt["Actual"]/1000).round(2)
+    lt["Expected_m3"] = (lt["Expected"]/1000).round(2)
+    lt["Excess_m3"]   = (lt["Excess"]/1000).round(2)
+    lt["Savings"]     = lt["Savings"].round(1)
 
-    # ── Downloads ───────────────────────────────────────────────────
-    section("⬇️ Download Report")
+    show = lt[["Location","Actual_m3","Expected_m3","Excess_m3","Diff_%","Savings","Alerts"]]
+    show.columns = ["Location","Actual (m³)","Expected (m³)","Excess (m³)","Diff %","AED Savings","Alerts"]
+    show = show.sort_values("Diff %", ascending=False)
 
-    report_txt = f"""
-{report_title}
-{"="*60}
-Generated   : {datetime.now().strftime('%d %B %Y %H:%M')}
-Period      : {reporting_period}
-Pilot Site  : {pilot_location}
-Duration    : {pilot_weeks} weeks
-Records     : {len(df):,}
+    def hl(v):
+        if not isinstance(v,(int,float)): return ""
+        if v>=25: return "background:#fadbd8;color:#c0392b;font-weight:700"
+        if v>=15: return "background:#fdebd0;color:#ca6f1e;font-weight:700"
+        if v>0:   return "background:#fef9e7;color:#d4ac0d"
+        return ""
 
-CAMPUS SUSTAINABILITY SCORE: {score:.0f} / 100  (Grade: {grade})
+    sec("📊 Location Summary")
+    st.dataframe(show.style.applymap(hl, subset=["Diff %"]),
+                 use_container_width=True, hide_index=True)
+    st.markdown("<hr>", unsafe_allow_html=True)
 
-WATER USAGE FINDINGS
-  Total Used          : {total_actual:,.0f} L  ({total_actual/1000:,.1f} m³)
-  Avoidable Excess    : {total_avoid:,.0f} L  ({total_avoid/1000:,.2f} m³)
-  AED Potential Saving: AED {total_aed:,.2f}
-  CO₂ Equivalent      : {total_co2:.2f} kg  (≈{trees_eq} trees/yr)
-  Total Alerts        : {total_alerts}
-  Possible Leaks      : {leak_cnt}
-  Priority Inspections: {prio_cnt}
+    # Actual vs Expected bars
+    sec("📈 Actual vs Expected by Location")
+    mlt = lt.melt(id_vars="Location", value_vars=["Actual_m3","Expected_m3"],
+                  var_name="Type", value_name="m³")
+    mlt["Type"] = mlt["Type"].map({"Actual_m3":"Actual","Expected_m3":"Expected"})
+    fig = px.bar(mlt, x="Location", y="m³", color="Type", barmode="group",
+                 color_discrete_map={"Actual":C["primary"],"Expected":C["accent"]})
+    st.plotly_chart(chart_layout(fig, h=340, xtick_angle=-15), use_container_width=True)
 
-IMPACT PROJECTIONS  [{red_target}% Reduction Target]
-  Water Saved         : {proj_save_l:,.0f} L  ({proj_save_l/1000:,.1f} m³)
-  AED Saved           : AED {proj_save_aed:,.2f}
-  CO₂ Avoided         : {proj_save_co2:.2f} kg
-  People Reached      : {people_reached:,}
-  Saving/Person       : {per_person:,.1f} L
+    c1, c2 = st.columns(2)
 
-SUSTAINABILITY ALIGNMENT
-  SDG 6  : Clean Water and Sanitation
-  SDG 12 : Responsible Consumption and Production
-  UAE Water Security Strategy 2036
-  UAE Smart Water Management
-  UAE Quality of Life Strategy
+    with c1:
+        # Top risk — avoidable excess
+        sec("🔥 Top High-Risk Areas by Excess")
+        risk = lt.sort_values("Excess_m3", ascending=False).head(5)
+        fig2 = px.bar(risk, x="Excess_m3", y="Location", orientation="h",
+                      color="Excess_m3",
+                      color_continuous_scale=["#94d2bd","#e9c46a","#e76f51"],
+                      labels={"Excess_m3":"Excess (m³)"})
+        fig2.update_layout(height=280, plot_bgcolor="white", paper_bgcolor="white",
+                           margin=dict(l=8,r=8,t=20,b=8), coloraxis_showscale=False,
+                           font=dict(family="Inter,sans-serif", size=12))
+        st.plotly_chart(fig2, use_container_width=True)
 
-{"="*60}
-NabdFlow · University Campus Water Intelligence
-"""
+    with c2:
+        # Stacked by time period
+        sec("⏰ Usage by Time Period")
+        tp_data = df.groupby(["Location","Time_Period"])["Actual_Usage_Litres"].sum().reset_index()
+        fig3 = px.bar(tp_data, x="Location", y="Actual_Usage_Litres",
+                      color="Time_Period", barmode="stack",
+                      color_discrete_sequence=["#023e8a","#0096c7","#48cae4","#90e0ef"],
+                      labels={"Actual_Usage_Litres":"Litres"})
+        st.plotly_chart(chart_layout(fig3, h=280, xtick_angle=-15), use_container_width=True)
 
-    report_csv_df = pd.DataFrame({
-        "Metric": [
-            "Campus Sustainability Score","Total Water Used (L)","Total Water Used (m³)",
-            "Avoidable Excess (L)","Avoidable Excess (m³)","Estimated AED Savings",
-            "CO2 Equivalent (kg)","Trees Equivalent","Total Alerts",
-            "Possible Leaks","Priority Inspections",
-            "Reduction Target (%)","Projected Water Saved (L)","Projected AED Saved",
-            "Projected CO2 Avoided (kg)","People Reached","Saving per Person (L)",
-        ],
-        "Value": [
-            f"{score:.0f}/100 ({grade})",
-            f"{total_actual:,.0f}", f"{total_actual/1000:,.1f}",
-            f"{total_avoid:,.0f}", f"{total_avoid/1000:,.2f}",
-            f"AED {total_aed:,.2f}", f"{total_co2:.2f}", str(trees_eq),
-            total_alerts, leak_cnt, prio_cnt,
-            red_target, f"{proj_save_l:,.0f}", f"AED {proj_save_aed:,.2f}",
-            f"{proj_save_co2:.2f}", people_reached, f"{per_person:,.1f}",
-        ],
-    })
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE 3 — LEAK DETECTION
+# ══════════════════════════════════════════════════════════════════════════════
+def pg_leak(df):
+    st.markdown('<div class="pg-title">🚨 Leak Detection & Alert Monitor</div>', unsafe_allow_html=True)
+    st.markdown('<div class="pg-sub">Identify suspicious usage, night-time anomalies, and priority inspection zones</div>',
+                unsafe_allow_html=True)
 
-    dl1, dl2, dl3 = st.columns(3)
-    with dl1:
-        st.download_button("📄 Download TXT Report",
-                           report_txt, "nabdflow_report.txt", "text/plain")
-    with dl2:
-        st.download_button("📊 Download CSV Summary",
-                           report_csv_df.to_csv(index=False), "nabdflow_summary.csv", "text/csv")
-    with dl3:
-        full_csv = df.copy()
-        full_csv["Date"] = full_csv["Date"].dt.strftime("%Y-%m-%d")
-        st.download_button("📥 Export Full Dataset",
-                           full_csv.to_csv(index=False), "nabdflow_data.csv", "text/csv")
+    # Filters
+    sec("🔍 Filters")
+    c1,c2,c3 = st.columns(3)
+    with c1:
+        sel_loc = st.selectbox("Location",
+            ["All Locations"] + sorted(df["Location"].unique().tolist()))
+    with c2:
+        sel_alert = st.selectbox("Alert Type",
+            ["All Alerts","Monitor","High Usage Alert","Possible Leak","Priority Inspection"])
+    with c3:
+        mn, mx = df["Date"].min().date(), df["Date"].max().date()
+        dr = st.date_input("Date Range", value=(mn, mx), min_value=mn, max_value=mx)
 
+    # Apply
+    filt = df[df["Alert"] != "Normal Variation"].copy()
+    if sel_loc   != "All Locations": filt = filt[filt["Location"] == sel_loc]
+    if sel_alert != "All Alerts":    filt = filt[filt["Alert"]    == sel_alert]
+    if len(dr) == 2:
+        filt = filt[(filt["Date"].dt.date >= dr[0]) & (filt["Date"].dt.date <= dr[1])]
 
-# ════════════════════════════════════════════════════════════════════
-# PAGE 6 — ABOUT
-# ════════════════════════════════════════════════════════════════════
-elif page == "ℹ️ About NabdFlow":
-    section("ℹ️ About NabdFlow")
-    st.markdown("---")
+    # Sub-KPIs
+    c1,c2,c3,c4 = st.columns(4)
+    with c1: kpi("🔍 Monitor",        str(filt[filt["Alert"]=="Monitor"].shape[0]),           "Needs watching")
+    with c2: kpi("⚠️ High Usage",     str(filt[filt["Alert"]=="High Usage Alert"].shape[0]),  "Exceeds 25%",  "warn")
+    with c3: kpi("🔴 Possible Leaks", str(filt[filt["Alert"]=="Possible Leak"].shape[0]),     "Night anomaly","alert")
+    with c4: kpi("🟣 Priority Insp.", str(filt[filt["Alert"]=="Priority Inspection"].shape[0]),"Repeat offend.","alert")
+    st.markdown("<hr>", unsafe_allow_html=True)
 
-    col_main, col_side = st.columns([2, 1])
+    # Alert log table
+    sec("📋 Alert Log")
+    if filt.empty:
+        st.success("✅ No alerts found for selected filters.")
+    else:
+        cols = ["Date","Location","Time_Period","Actual_Usage_Litres",
+                "Expected_Usage_Litres","Diff_Pct","Alert"]
+        disp = filt[cols].copy()
+        disp["Date"]     = disp["Date"].dt.strftime("%Y-%m-%d")
+        disp["Diff_Pct"] = disp["Diff_Pct"].round(1)
+        disp.columns     = ["Date","Location","Period","Actual (L)","Expected (L)","Diff %","Alert"]
+
+        def style_a(v):
+            m = {"Monitor":"background:#fef9e7;color:#b7950b",
+                 "High Usage Alert":"background:#fdebd0;color:#ca6f1e",
+                 "Possible Leak":"background:#fadbd8;color:#c0392b",
+                 "Priority Inspection":"background:#f5eef8;color:#7d3c98"}
+            return m.get(v,"")
+
+        st.dataframe(disp.style.applymap(style_a, subset=["Alert"]),
+                     use_container_width=True, hide_index=True)
+    st.markdown("<hr>", unsafe_allow_html=True)
+
+    # Priority action table
+    sec("🎯 Priority Action Table — For Facility Manager")
+    st.caption("Consolidated critical zones requiring immediate attention")
+    rows_pt = []
+
+    for loc, cnt in df[df["Alert"]=="Possible Leak"].groupby("Location").size().items():
+        rows_pt.append({"Priority":"🔴 CRITICAL","Location":loc,
+            "Reason":f"Night-time excess detected ({cnt} incidents)",
+            "Recommended Action":"Inspect pipes & fixtures at night; check silent leaks & meter readings"})
+
+    for loc, cnt in df[df["Alert"]=="Priority Inspection"].groupby("Location").size().items():
+        rows_pt.append({"Priority":"🟠 HIGH","Location":loc,
+            "Reason":f"Repeated high usage across multiple days ({cnt} incidents)",
+            "Recommended Action":"Schedule formal maintenance within 48 h; audit fixtures & sub-meters"})
+
+    done = [r["Location"] for r in rows_pt]
+    for loc, cnt in df[df["Alert"]=="High Usage Alert"].groupby("Location").size().items():
+        if loc not in done:
+            rows_pt.append({"Priority":"🟡 MODERATE","Location":loc,
+                "Reason":f"Usage >25% above baseline ({cnt} incidents)",
+                "Recommended Action":"Monitor closely; verify occupancy data & meter accuracy"})
+
+    if rows_pt:
+        pt = pd.DataFrame(rows_pt).drop_duplicates(subset=["Location"])
+        st.dataframe(pt, use_container_width=True, hide_index=True)
+    else:
+        st.success("✅ No critical priority issues in current dataset.")
+
+    st.markdown("<hr>", unsafe_allow_html=True)
+
+    # Heatmap
+    sec("🗓️ Anomaly Heatmap — Location × Date")
+    h_df = df[df["Alert"]!="Normal Variation"].copy()
+    h_df["Date_s"] = h_df["Date"].dt.strftime("%b %d")
+    pivot = (h_df.groupby(["Location","Date_s"])["Diff_Pct"]
+                 .mean().reset_index()
+                 .pivot(index="Location", columns="Date_s", values="Diff_Pct")
+                 .fillna(0))
+    if not pivot.empty:
+        fig = px.imshow(pivot, color_continuous_scale=["#d5f5e3","#f9e79f","#e74c3c"],
+                        zmin=0, zmax=50, labels=dict(color="Excess %"), aspect="auto")
+        fig.update_layout(height=260, paper_bgcolor="white",
+                          margin=dict(l=8,r=8,t=16,b=8),
+                          font=dict(family="Inter,sans-serif",size=11))
+        st.plotly_chart(fig, use_container_width=True)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE 4 — AI RECOMMENDATIONS
+# ══════════════════════════════════════════════════════════════════════════════
+def pg_recs(df):
+    st.markdown('<div class="pg-title">🤖 AI Recommendations</div>', unsafe_allow_html=True)
+    st.markdown('<div class="pg-sub">Data-driven insights generated from your campus usage patterns</div>',
+                unsafe_allow_html=True)
+
+    ls = df.groupby("Location").agg(
+        avg_diff    =("Diff_Pct","mean"),
+        excess_m3   =("Avoidable_Litres", lambda x: x.sum()/1000),
+        leaks       =("Alert", lambda x: (x=="Possible Leak").sum()),
+        priority    =("Alert", lambda x: (x=="Priority Inspection").sum()),
+        high        =("Alert", lambda x: (x=="High Usage Alert").sum()),
+        savings     =("AED_Savings","sum"),
+    ).reset_index()
+
+    recs = []
+
+    for _, r in ls.iterrows():
+        loc, diff, exc, sav = r["Location"], r["avg_diff"], r["excess_m3"], r["savings"]
+
+        if r["leaks"] > 0:
+            recs.append(dict(p="HIGH", loc=loc, icon="🔴",
+                title=f"Suspected Leak in {loc}",
+                insight=(f"NabdFlow detected {int(r['leaks'])} night-time anomaly incidents. "
+                         f"Night usage exceeded 25% of expected baseline — strong indicator "
+                         f"of a silent leak or unattended open fixture."),
+                action=(f"Conduct an immediate night-time walk-through inspection. "
+                        f"Check running toilets, dripping taps, and pipe joints. "
+                        f"Estimated waste: {exc:.1f} m³ · AED {sav:.1f} recoverable."),
+                save=f"AED {sav:.1f}"))
+
+        if r["priority"] > 0:
+            recs.append(dict(p="HIGH", loc=loc, icon="🟠",
+                title=f"Priority Inspection — {loc}",
+                insight=(f"Repeated high-usage pattern across {int(r['priority'])} time slots "
+                         f"suggests a systemic problem, not a one-off event."),
+                action=(f"Schedule formal maintenance within 48 hours. "
+                        f"Review sub-meters, sensor accuracy, and cleaning procedures. "
+                        f"Potential savings: AED {sav:.1f}."),
+                save=f"AED {sav:.1f}"))
+
+        if r["high"] >= 3 and r["priority"] == 0 and r["leaks"] == 0:
+            cut = min(20, diff*0.6)
+            recs.append(dict(p="MEDIUM", loc=loc, icon="🟡",
+                title=f"Reduce Usage at {loc} by ~{cut:.0f}%",
+                insight=(f"Average usage is {diff:.1f}% above expected baseline across "
+                         f"multiple recorded time periods."),
+                action=(f"Audit operational schedules, reduce idle run times, and implement "
+                        f"occupancy-based triggers. A {cut:.0f}% cut saves ~{exc*0.6:.1f} m³ "
+                        f"and AED {sav*0.6:.1f}."),
+                save=f"AED {sav*0.6:.1f}"))
+
+        if diff < 0:
+            recs.append(dict(p="LOW", loc=loc, icon="🟢",
+                title=f"{loc} — Below Baseline (Good Practice)",
+                insight=(f"{loc} uses {abs(diff):.1f}% less than expected. "
+                         f"Positive result but warrants validation to confirm meter accuracy."),
+                action="Verify readings; document as a best-practice model for other zones.",
+                save="—"))
+
+    # Campus-wide night check
+    night_avg = df[df["Time_Period"]=="Night"]["Diff_Pct"].mean()
+    if night_avg > 10:
+        recs.append(dict(p="MEDIUM", loc="Campus-wide", icon="🌙",
+            title="Audit Night-Time Water Flow Campus-Wide",
+            insight=(f"Average night-time usage is {night_avg:.1f}% above expected. "
+                     f"Most facilities should show near-zero consumption after hours."),
+            action=("Install automatic shut-off valves. Set smart alerts for >5 L/min "
+                    "between 11 PM–5 AM. Consider a certified water auditor."),
+            save="Variable"))
+
+    # Garden irrigation
+    g = df[df["Location"]=="Garden Irrigation"]
+    if not g.empty and g["Diff_Pct"].mean() > 15:
+        recs.append(dict(p="MEDIUM", loc="Garden Irrigation", icon="🌿",
+            title="Optimise Irrigation Schedule",
+            insight=(f"Irrigation usage is {g['Diff_Pct'].mean():.1f}% above baseline. "
+                     f"Overwatering is the most avoidable campus water waste."),
+            action=("Reduce duration by 15–20%. Switch to early morning (5–7 AM) to cut "
+                    "evaporation. Install soil-moisture sensors or a smart controller "
+                    "calibrated to UAE climate data."),
+            save=f"AED {g['AED_Savings'].sum():.1f}"))
+
+    # Cafeteria afternoon peak
+    caf = df[(df["Location"]=="Cafeteria/Pantry") & (df["Time_Period"]=="Afternoon")]
+    if not caf.empty and caf["Diff_Pct"].mean() > 15:
+        recs.append(dict(p="LOW", loc="Cafeteria/Pantry", icon="🍽️",
+            title="Review Afternoon Cafeteria Routines",
+            insight=(f"Afternoon usage in the Cafeteria/Pantry exceeds expected "
+                     f"by {caf['Diff_Pct'].mean():.1f}%."),
+            action=("Audit dishwasher cycles and food-prep routines. "
+                    "Train staff on water-saving practices during peak hours."),
+            save=f"AED {caf['AED_Savings'].sum():.1f}"))
+
+    # Sort HIGH → MEDIUM → LOW
+    ord_map = {"HIGH":0,"MEDIUM":1,"LOW":2}
+    recs.sort(key=lambda x: ord_map.get(x["p"],3))
+
+    if not recs:
+        st.success("✅ No significant issues detected. Campus water usage appears normal.")
+        return
+
+    st.info(f"💡 **{len(recs)} smart recommendations** generated from your data — sorted by urgency.")
+
+    for rec in recs:
+        cls = {"HIGH":"high","MEDIUM":"medium","LOW":"low"}.get(rec["p"],"")
+        st.markdown(f"""
+        <div class="rec {cls}">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+            <span style="font-size:15px;font-weight:700;color:#2c3e50">
+              {rec['icon']} {rec['title']}
+            </span>
+            <div>
+              <span style="background:#eaf4fb;color:#1a6eb5;padding:2px 10px;
+                border-radius:20px;font-size:11px;font-weight:700">📍 {rec['loc']}</span>
+              <span style="background:#eafaf1;color:#1e8449;padding:2px 10px;
+                border-radius:20px;font-size:11px;font-weight:700;margin-left:6px">
+                💰 {rec['save']}</span>
+            </div>
+          </div>
+          <div style="font-size:13px;color:#555;margin-bottom:6px">
+            <strong>📊 Insight:</strong> {rec['insight']}</div>
+          <div style="font-size:13px;color:#1a6eb5">
+            <strong>✅ Action:</strong> {rec['action']}</div>
+        </div>""", unsafe_allow_html=True)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE 5 — IMPACT REPORT
+# ══════════════════════════════════════════════════════════════════════════════
+def pg_impact(df):
+    st.markdown('<div class="pg-title">📊 Impact Report</div>', unsafe_allow_html=True)
+    st.markdown('<div class="pg-sub">Sustainability summary ready for stakeholder reporting and competition submission</div>',
+                unsafe_allow_html=True)
+
+    col_main, col_inp = st.columns([3,1])
+    with col_inp:
+        people   = st.number_input("Est. Students/Staff Reached", min_value=0, value=250, step=10)
+        pilot    = st.text_input("Pilot Location", value="Main Campus, UAE University")
+
+    tot_act  = df["Actual_Usage_Litres"].sum()
+    tot_exp  = df["Expected_Usage_Litres"].sum()
+    tot_exc  = df["Avoidable_Litres"].sum()
+    tot_sav  = df["AED_Savings"].sum()
+    n_high   = df[df["Alert"].isin(["High Usage Alert","Priority Inspection"])].shape[0]
+    n_leak   = df[df["Alert"]=="Possible Leak"].shape[0]
+    red_pct  = (tot_exc/tot_act*100) if tot_act > 0 else 0
+    d_range  = f"{df['Date'].min().strftime('%d %b %Y')} – {df['Date'].max().strftime('%d %b %Y')}"
 
     with col_main:
-        st.markdown("""
-### 💧 What is NabdFlow?
+        st.markdown(f"""
+        <div style="background:white;border-radius:14px;padding:28px 30px;
+                    box-shadow:0 4px 20px rgba(0,0,0,.09);">
+          <div style="display:flex;align-items:center;margin-bottom:18px">
+            <div style="font-size:40px;margin-right:14px">💧</div>
+            <div>
+              <div style="font-size:22px;font-weight:800;color:#0a2342">NabdFlow</div>
+              <div style="font-size:12px;color:#7f8c8d">
+                AI-Powered Water Intelligence · University Campus Facility Managers</div>
+            </div>
+          </div>
+          <hr style="border-color:#ecf0f1">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;
+                      font-size:13px;margin-bottom:16px">
+            <div>📍 <strong>Pilot Location:</strong> {pilot}</div>
+            <div>⏱️ <strong>Pilot Duration:</strong> 4–6 Weeks</div>
+            <div>📅 <strong>Data Period:</strong> {d_range}</div>
+            <div>👥 <strong>People Reached:</strong> {people:,}</div>
+            <div>💧 <strong>Total Monitored:</strong> {tot_act/1000:,.1f} m³</div>
+            <div>♻️ <strong>Avoidable Waste:</strong> {tot_exc/1000:,.1f} m³</div>
+            <div>💰 <strong>Est. AED Savings:</strong> AED {tot_sav:,.1f}</div>
+            <div>🚨 <strong>Alerts Detected:</strong> {n_high+n_leak}</div>
+            <div>📉 <strong>Potential Reduction:</strong> {red_pct:.1f}% of usage</div>
+            <div>🎯 <strong>Reduction Target:</strong> 10–20%</div>
+          </div>
+          <hr style="border-color:#ecf0f1">
+          <div style="margin-bottom:8px"><strong>🌍 SDG Alignment</strong></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+            <span style="background:#0a9396;color:white;padding:5px 14px;
+              border-radius:20px;font-size:12px;font-weight:700">
+              🌊 SDG 6 — Clean Water & Sanitation</span>
+            <span style="background:#94d2bd;color:#0a2342;padding:5px 14px;
+              border-radius:20px;font-size:12px;font-weight:700">
+              ♻️ SDG 12 — Responsible Consumption</span>
+          </div>
+          <div style="margin-bottom:8px"><strong>🇦🇪 UAE Strategic Alignment</strong></div>
+          <div style="font-size:13px;color:#555;line-height:2">
+            ✅ UAE Water Security Strategy 2036<br>
+            ✅ Smart Water Management & Digital Infrastructure Direction<br>
+            ✅ Quality of Life and Sustainable Communities Initiative<br>
+            ✅ UAE Net Zero by 2050 Strategic Initiative
+          </div>
+          <hr style="border-color:#ecf0f1;margin-top:14px">
+          <div style="font-size:11px;color:#aaa;text-align:right">
+            Generated by NabdFlow v1.0 · {datetime.now().strftime('%d %b %Y')}</div>
+        </div>""", unsafe_allow_html=True)
 
-**NabdFlow** is a smart water management dashboard built specifically for university facility managers.
-It takes raw water usage data — from meter readings, facility logs, or manual records — and turns it
-into clear, actionable intelligence.
+    st.markdown("<br>", unsafe_allow_html=True)
+    sec("⬇️ Download Impact Report")
 
-> *"Nabd" (نبض) means pulse in Arabic. NabdFlow monitors the pulse of your campus water systems.*
+    txt = f"""
+=================================================================
+  NABDFLOW — SUSTAINABILITY IMPACT REPORT
+  AI-Powered Water Intelligence for University Campuses
+=================================================================
+Project Name       : NabdFlow
+Target User        : University Campus Facility Manager
+Pilot Location     : {pilot}
+Pilot Duration     : 4–6 Weeks
+Data Period        : {d_range}
+People Reached     : {people:,}
+Report Generated   : {datetime.now().strftime('%d %B %Y, %H:%M')}
 
-The goal is simple: **help you detect waste, prevent leaks, and save money** — before problems become expensive.
-NabdFlow works with data you already have. No new hardware or sensors are required.
+-----------------------------------------------------------------
+  WATER USAGE SUMMARY
+-----------------------------------------------------------------
+Total Monitored    : {tot_act/1000:,.2f} m³  ({tot_act:,.0f} L)
+Expected Usage     : {tot_exp/1000:,.2f} m³
+Avoidable Waste    : {tot_exc/1000:,.2f} m³  ({tot_exc:,.0f} L)
+Est. AED Savings   : AED {tot_sav:,.2f}
+Potential Reduction: {red_pct:.1f}% of total campus usage
+Target             : 10–20%
 
----
+-----------------------------------------------------------------
+  ALERTS
+-----------------------------------------------------------------
+High Usage Alerts  : {n_high}
+Possible Leaks     : {n_leak}
+Total Critical     : {n_high + n_leak}
 
-### 🗂️ How the App Works — Page by Page
+-----------------------------------------------------------------
+  SDG & UAE ALIGNMENT
+-----------------------------------------------------------------
+SDG 6  : Clean Water and Sanitation
+SDG 12 : Responsible Consumption and Production
+UAE    : Water Security Strategy 2036
+UAE    : Smart Water Management Direction
+UAE    : Quality of Life & Sustainable Communities
+UAE    : Net Zero by 2050
 
-**📊 Overview Dashboard**
-Your daily control room. The moment you open this page you see the Campus Sustainability Score
-(a 0–100 index graded A+ to F), total water consumed vs expected, avoidable waste in litres,
-estimated cost savings in AED, and the CO₂ footprint of that waste. Below the score, eight KPI cards
-give a quick health check of the entire campus. The daily trend chart shows actual usage alongside
-the expected baseline, a 7-day rolling average, and a 7-day forward forecast. The heatmap at the
-bottom instantly shows you *which location* and *which time of day* has the biggest anomalies —
-red means consistent overuse, green means efficient.
+-----------------------------------------------------------------
+  IMPACT DIMENSIONS
+-----------------------------------------------------------------
+Social       : Improved campus living standards & awareness
+Environmental: Reduced water waste & conservation
+Economic     : Lower utility bills & maintenance costs
 
-**📍 Location Analysis**
-A deep dive into each campus zone. Every location is ranked by water efficiency using
-litres-per-person (occupancy-adjusted) — not just raw volume — so a busy cafeteria is
-fairly compared to a quiet admin block. A benchmark bar shows how each location compares
-against the UAE university average of 180 L/person/day. The summary table shows total usage,
-expected usage, avoidable excess, AED savings opportunity, CO₂ equivalent, and alert count
-side by side for all locations.
+=================================================================
+  NabdFlow — Shifting campuses from reactive maintenance
+  to proactive water intelligence.
+=================================================================
+"""
+    csv_df = pd.DataFrame({
+        "Metric":["Pilot Location","Duration","Data Period","People Reached",
+                  "Total Monitored (m3)","Expected (m3)","Avoidable Waste (m3)",
+                  "AED Savings","Reduction %","High Alerts","Possible Leaks"],
+        "Value": [pilot,"4-6 Weeks",d_range,people,
+                  round(tot_act/1000,2), round(tot_exp/1000,2), round(tot_exc/1000,2),
+                  round(tot_sav,2), round(red_pct,1), n_high, n_leak]
+    }).to_csv(index=False)
 
-**🔍 Leak Detection**
-The alert intelligence centre. Every reading is classified into one of five categories based
-on how far actual usage exceeds expected. The alert timeline heatmap shows the full date
-range across all locations so you can instantly spot recurring problems. A priority action
-table at the bottom tells you *exactly* what to do at each location, ranked from urgent to low.
-Each alert also carries a confidence score (Very High / High / Medium / Low) calculated from
-both the percentage deviation and the statistical Z-score, so you know which alerts are
-genuinely abnormal vs random noise.
+    ca, cb = st.columns(2)
+    with ca:
+        st.download_button("📄 Download as TXT", txt,
+            f"NabdFlow_Report_{datetime.now().strftime('%Y%m%d')}.txt",
+            "text/plain", use_container_width=True)
+    with cb:
+        st.download_button("📊 Download as CSV", csv_df,
+            f"NabdFlow_Report_{datetime.now().strftime('%Y%m%d')}.csv",
+            "text/csv", use_container_width=True)
 
-**🤖 AI Recommendations**
-Data-driven action plan generated automatically from the uploaded data. Recommendations are
-ranked by estimated AED impact — the highest-value actions appear first. Each card explains
-the problem, the likely cause, and a specific corrective step. Examples include scheduling
-irrigation at cooler hours, replacing faulty flush valves, adding shut-off timers for night-time
-lines, and training cafeteria staff on water-conscious practices.
+    st.markdown("<hr>", unsafe_allow_html=True)
+    sec("📈 Visual Impact Summary")
+    v1, v2 = st.columns(2)
 
-**📄 Impact Report**
-A clean, presentation-ready summary for management or sustainability reporting. Shows the
-campus score, all key figures, CO₂ equivalent savings, UAE benchmark comparison, and full
-SDG + UAE strategy alignment. You can adjust the reduction target, pilot duration, and
-number of people reached — the projections update instantly. Download as TXT or CSV.
+    with v1:
+        fig = go.Figure(go.Pie(
+            labels=["Efficient Usage","Avoidable Excess"],
+            values=[max(0, tot_act-tot_exc), tot_exc],
+            hole=.58, marker_colors=["#94d2bd","#e74c3c"],
+            textinfo="percent+label"))
+        fig.update_layout(title="Water Usage Breakdown", height=270,
+            paper_bgcolor="white", margin=dict(l=8,r=8,t=40,b=8),
+            showlegend=False, font=dict(family="Inter,sans-serif",size=12))
+        st.plotly_chart(fig, use_container_width=True)
 
----
+    with v2:
+        ac = df["Alert"].value_counts().reset_index()
+        ac.columns = ["Alert","Count"]
+        fig2 = px.bar(ac, x="Alert", y="Count", color="Alert",
+                      color_discrete_map=ALERT_COL)
+        fig2.update_layout(title="Alert Categories", height=270,
+            plot_bgcolor="white", paper_bgcolor="white", showlegend=False,
+            margin=dict(l=8,r=8,t=40,b=8), font=dict(family="Inter,sans-serif",size=11),
+            xaxis_tickangle=-15)
+        st.plotly_chart(fig2, use_container_width=True)
 
-### 🔔 Alert System Explained
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE 6 — ABOUT
+# ══════════════════════════════════════════════════════════════════════════════
+def pg_about():
+    st.markdown('<div class="pg-title">ℹ️ About NabdFlow</div>', unsafe_allow_html=True)
+    st.markdown('<div class="pg-sub">Intelligent water management for a sustainable campus future</div>',
+                unsafe_allow_html=True)
+    st.markdown("""
+    <div style="background:white;border-radius:14px;padding:32px;
+                box-shadow:0 4px 20px rgba(0,0,0,.08)">
+      <div style="text-align:center;padding-bottom:22px">
+        <div style="font-size:52px">💧</div>
+        <div style="font-size:26px;font-weight:800;color:#0a2342;letter-spacing:1px">NabdFlow</div>
+        <div style="font-size:13px;color:#7f8c8d">
+          AI-Powered Water Intelligence · University Campus Facility Managers</div>
+        <div style="display:inline-block;background:linear-gradient(90deg,#1a6eb5,#0a9396);
+            color:white;padding:5px 18px;border-radius:20px;font-size:12px;
+            font-weight:700;margin-top:10px">
+          v1.0 · Sustainability Competition · UAE · 2026</div>
+      </div>
+      <hr style="border-color:#ecf0f1">
 
-| Level | Trigger | What it Means |
-|-------|---------|---------------|
-| ✅ Normal | 0–15% above expected | Acceptable variation |
-| 🟡 Monitor | 15–25% above expected | Worth watching; check if it persists |
-| 🔴 High Usage | ≥25% above expected | Investigate root cause promptly |
-| 🔵 Possible Leak | ≥25% above expected at **Night** | Low occupancy + high flow = leak signal |
-| 🟣 Priority Inspection | High Usage at same location on **2+ days** | Persistent fault — act immediately |
+      <h3 style="color:#0a2342">🎯 What is NabdFlow?</h3>
+      <p style="color:#555;line-height:1.9;font-size:14px">
+        <strong>NabdFlow</strong> (نبض — "pulse" in Arabic) is a campus-level water intelligence
+        platform for university facility managers. It analyses historical water usage data to detect
+        abnormal consumption, identify possible leaks, predict demand, estimate financial savings,
+        and generate actionable sustainability reports — no smart-meter infrastructure required.
+      </p>
+      <div style="background:#eaf7fb;border-left:4px solid #0a9396;padding:14px 18px;
+          border-radius:6px;margin:16px 0;font-size:14px">
+        ⚠️ <strong>Important:</strong> NabdFlow is not designed to replace existing smart meter
+        systems. It acts as a campus-level intelligence layer working alongside existing meter
+        readings and facility records — helping managers move from
+        <em>reactive maintenance to proactive water management</em>.
+      </div>
 
----
+      <h3 style="color:#0a2342;margin-top:22px">🌍 Impact Dimensions</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:10px">
+        <div style="background:#eafaf1;border-radius:10px;padding:18px;text-align:center">
+          <div style="font-size:26px">👥</div>
+          <div style="font-weight:700;color:#1e8449;margin:5px 0">Social</div>
+          <div style="font-size:12px;color:#555">Better campus living standards and increased
+            awareness of water conservation among students and staff</div>
+        </div>
+        <div style="background:#eaf4fb;border-radius:10px;padding:18px;text-align:center">
+          <div style="font-size:26px">🌿</div>
+          <div style="font-weight:700;color:#1a6eb5;margin:5px 0">Environmental</div>
+          <div style="font-size:12px;color:#555">Reduced water waste, lower carbon footprint
+            from water treatment, preservation of natural resources</div>
+        </div>
+        <div style="background:#fef9e7;border-radius:10px;padding:18px;text-align:center">
+          <div style="font-size:26px">💰</div>
+          <div style="font-weight:700;color:#d4ac0d;margin:5px 0">Economic</div>
+          <div style="font-size:12px;color:#555">Lower utility and maintenance costs; early
+            leak detection prevents expensive infrastructure damage</div>
+        </div>
+      </div>
 
-### 🔢 How the Numbers Are Calculated
+      <h3 style="color:#0a2342;margin-top:22px">⚙️ How It Works</h3>
+      <div style="font-size:14px;color:#555;line-height:2.2">
+        1. 📁 <strong>Upload</strong> your campus CSV/Excel or use the built-in sample dataset<br>
+        2. 📊 <strong>Analyse</strong> — NabdFlow calculates excess, savings, and alert categories<br>
+        3. 🔍 <strong>Detect</strong> — Leak detection surfaces the highest-risk zones instantly<br>
+        4. 🤖 <strong>Act</strong> — AI-generated recommendations guide maintenance priorities<br>
+        5. 📄 <strong>Report</strong> — Download impact reports for leadership and stakeholders
+      </div>
 
-| Metric | Formula |
-|--------|---------|
-| Avoidable Excess | max(Actual − Expected, 0) |
-| AED Savings | Avoidable Excess ÷ 1,000 × AED 4.50 per m³ |
-| CO₂ Equivalent | Avoidable Excess (m³) × 0.65 kg |
-| Usage per Person | Actual Usage ÷ Occupancy Count |
-| Sustainability Score | 100 × (1 − weighted alert sum ÷ maximum possible) |
-| Alert Confidence | Combines % deviation + statistical Z-score |
+      <h3 style="color:#0a2342;margin-top:22px">🇦🇪 UAE & Global Alignment</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;
+          font-size:13px;color:#555;margin-top:10px">
+        <div>✅ UAE Water Security Strategy 2036</div>
+        <div>✅ SDG 6 — Clean Water and Sanitation</div>
+        <div>✅ Smart Water Management Direction</div>
+        <div>✅ SDG 12 — Responsible Consumption</div>
+        <div>✅ Quality of Life & Sustainable Communities</div>
+        <div>✅ UAE Net Zero by 2050 Strategic Initiative</div>
+      </div>
 
-**CO₂ note:** UAE relies heavily on energy-intensive desalination (~1.0 kWh/m³).
-Using the national grid emission factor of ~0.65 kg CO₂/kWh, every wasted cubic metre
-of water carries an estimated 0.65 kg CO₂ footprint. These are indicative values for
-awareness and reporting — not certified emissions figures.
+      <hr style="border-color:#ecf0f1;margin-top:22px">
+      <div style="text-align:center;font-size:12px;color:#aaa">
+        Built with ❤️ for sustainability · NabdFlow · 2026
+      </div>
+    </div>""", unsafe_allow_html=True)
 
----
+# ══════════════════════════════════════════════════════════════════════════════
+# MAIN
+# ══════════════════════════════════════════════════════════════════════════════
+def main():
+    page, uploaded, use_sample = sidebar()
 
-### 🌍 What NabdFlow Supports
+    # Load data
+    df_raw = None
+    if uploaded is not None:
+        try:
+            df_raw = (pd.read_csv(uploaded) if uploaded.name.endswith(".csv")
+                      else pd.read_excel(uploaded))
+            st.sidebar.success(f"✅ Loaded {len(df_raw):,} rows")
+        except Exception as e:
+            st.sidebar.error(f"❌ Load error: {e}")
 
-| Framework | How NabdFlow Contributes |
-|-----------|-------------------------|
-| **SDG 6** – Clean Water & Sanitation | Detects and reduces institutional water waste |
-| **SDG 12** – Responsible Consumption | Quantifies overconsumption and drives efficiency |
-| **UAE Water Security Strategy 2036** | Supports the 26% efficiency target for public facilities |
-| **UAE Smart Water Management** | Enables data-driven decisions without new infrastructure |
-| **UAE Quality of Life Strategy** | Improves campus environment and community awareness |
+    if df_raw is None or use_sample:
+        df_raw = make_sample()
+        if uploaded is None:
+            st.sidebar.info("📊 Using built-in sample data (30 days · 5 locations)")
 
----
+    df = process(df_raw)
 
-### 📁 How to Use Your Own Data
+    # Route
+    if   "Overview"        in page: pg_overview(df)
+    elif "Location"        in page: pg_location(df)
+    elif "Leak"            in page: pg_leak(df)
+    elif "Recommendations" in page: pg_recs(df)
+    elif "Impact"          in page: pg_impact(df)
+    elif "About"           in page: pg_about()
 
-Upload a CSV or Excel file from the sidebar. Your file must contain these columns:
-
-| Column | What to put in it |
-|--------|------------------|
-| `Date` | Date of the reading (e.g. 2024-09-01) |
-| `Location` | Name of the campus area |
-| `Time_Period` | Morning / Afternoon / Evening / Night |
-| `Actual_Usage_Litres` | What the meter actually recorded |
-| `Expected_Usage_Litres` | The normal/baseline for that location and time |
-| `Occupancy_Count` | Approximate number of people present |
-| `Notes` | Any relevant notes (can be left blank) |
-        """)
-
-    with col_side:
-        st.markdown("### 📌 Quick Reference")
-        st.info("**Target User:** Facility Manager")
-        st.info("**Cost Rate:** AED 4.50 / m³")
-        st.info("**CO₂ Factor:** 0.65 kg / m³")
-        st.info("**UAE Benchmark:** 180 L/p/day")
-        st.info("**Pilot Duration:** 4–8 weeks")
-        st.success("**No Hardware Required**")
-
-        st.markdown("### 🔧 Built With")
-        st.markdown("""
-- 🐍 Python
-- 📊 Streamlit
-- 🐼 Pandas / NumPy
-- 📈 Plotly
-        """)
-
-        st.markdown("### 🚀 Future Enhancements")
-        st.markdown("""
-- IoT / smart meter connector
-- Arabic language interface
-- Predictive ML anomaly model
-- Multi-campus dashboard
-- WhatsApp / email alerts
-- PDF report export
-        """)
-
-        st.markdown("### 📊 Scoring Guide")
-        st.markdown("""
-| Score | Grade | Status |
-|-------|-------|--------|
-| 88–100 | A+ | Excellent |
-| 78–87 | A | Very Good |
-| 68–77 | B | Good |
-| 58–67 | C | Fair |
-| 45–57 | D | Poor |
-| 0–44 | F | Critical |
-        """)
+if __name__ == "__main__":
+    main()
