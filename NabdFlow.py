@@ -65,56 +65,36 @@ TREES_PER_100KG_CO2      = 1      # 1 tree absorbs ~100 kg CO₂/yr
 # ════════════════════════════════════════════
 st.markdown(f"""
 <style>
-  /* ── Base ── */
+  /* ── Base (light theme — set in .streamlit/config.toml) ── */
   .main {{ background: {PALETTE['bg']}; }}
   .block-container {{ padding-top: 2.8rem !important; padding-bottom: 2rem; }}
 
-  /* ════ FIX ALL GREY / INVISIBLE TEXT IN DARK MODE ════ */
-
-  /* Metric labels */
-  [data-testid="stMetricLabel"] p,
-  [data-testid="stMetricLabel"] label {{
-    color: #cbd5e1 !important;
-    font-size: 0.76rem !important;
-    font-weight: 600 !important;
+  /* ── Light-theme text refinements ── */
+  [data-testid="stMetricLabel"] p {{
+    font-size: 0.73rem !important;
+    font-weight: 700 !important;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.07em;
+    color: #475569 !important;
   }}
-  /* Metric delta */
-  [data-testid="stMetricDelta"] span {{ color: #94a3b8 !important; }}
-
-  /* All widget labels (multiselect, slider, input, date) */
-  [data-testid="stWidgetLabel"] p,
-  .stSlider label, .stNumberInput label,
-  .stTextInput label, .stDateInput label,
-  .stSelectbox label, .stMultiSelect label {{
-    color: #e2e8f0 !important;
+  [data-testid="stMetricValue"] {{
+    color: #023e8a !important;
+    font-weight: 900 !important;
+  }}
+  [data-testid="stWidgetLabel"] p {{
+    color: #334155 !important;
     font-weight: 600 !important;
-    font-size: 0.85rem !important;
+    font-size: 0.84rem !important;
   }}
-
-  /* Caption / small text */
-  .stCaption p, [data-testid="stCaptionContainer"] p,
-  div[data-testid="stCaptionContainer"] span {{
-    color: #94a3b8 !important;
+  .stCaption p, [data-testid="stCaptionContainer"] p {{
+    color: #64748b !important;
   }}
-
-  /* Markdown headings outside cards */
-  .stMarkdown h3, .stMarkdown h4 {{ color: #e2e8f0 !important; }}
-  .stMarkdown strong {{ color: #f0f9ff !important; }}
-
-  /* Checkbox labels */
-  .stCheckbox label span {{ color: #e2e8f0 !important; }}
-
-  /* Number inputs */
-  .stNumberInput input, .stTextInput input {{
-    color: #f0f9ff !important;
-  }}
-
-  /* Dataframe headers */
+  .stMarkdown h3, .stMarkdown h4 {{ color: #1e3a5f !important; }}
+  .stMarkdown strong {{ color: #0f172a !important; }}
   [data-testid="stDataFrame"] th {{
-    color: #e2e8f0 !important;
-    background: #1e3a5f !important;
+    color: #1e293b !important;
+    background: #dbeafe !important;
+    font-weight: 700 !important;
   }}
 
   /* ── Sidebar ── */
