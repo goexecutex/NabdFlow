@@ -581,6 +581,12 @@ CHART_LAYOUT = dict(
     plot_bgcolor="#f0f7ff",
     margin=dict(l=12, r=12, t=36, b=12),
     font=dict(family="Inter, Arial, sans-serif", size=12, color="#1e293b"),
+    legend=dict(
+        font=dict(color="#1e293b", size=12),
+        bgcolor="rgba(255,255,255,0.9)",
+        bordercolor="#e2e8f0",
+        borderwidth=1,
+    ),
 )
 
 _AXIS = dict(
@@ -593,9 +599,18 @@ _AXIS = dict(
 )
 
 def style_axes(fig):
-    """Apply dark-readable axis colours to any Plotly figure."""
+    """Apply dark-readable axis + legend colours to any Plotly figure."""
     fig.update_xaxes(**_AXIS)
     fig.update_yaxes(**_AXIS)
+    # Force legend text dark — fixes invisible grey labels in dark mode
+    fig.update_layout(
+        legend=dict(
+            font=dict(color="#1e293b", size=12),
+            bgcolor="rgba(255,255,255,0.92)",
+            bordercolor="#e2e8f0",
+            borderwidth=1,
+        )
+    )
     return fig
 
 # ════════════════════════════════════════════
