@@ -65,172 +65,262 @@ TREES_PER_100KG_CO2      = 1      # 1 tree absorbs ~100 kg CO₂/yr
 # ════════════════════════════════════════════
 st.markdown(f"""
 <style>
-  /* ── Base (light theme — set in .streamlit/config.toml) ── */
-  .main {{ background: {PALETTE['bg']}; }}
-  .block-container {{ padding-top: 2.8rem !important; padding-bottom: 2rem; }}
+/* ═══════════════════════════════════════════════════════════
+   NABDFLOW — MASTER CSS
+   Strategy: force entire app background + text dark regardless
+   of whether user has dark/light OS theme. Do not rely on
+   config.toml alone. Override at every level.
+   ═══════════════════════════════════════════════════════════ */
 
-  /* ── Light-theme text refinements ── */
-  [data-testid="stMetricLabel"] p {{
-    font-size: 0.73rem !important;
-    font-weight: 700 !important;
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-    color: #475569 !important;
-  }}
-  [data-testid="stMetricValue"] {{
-    color: #023e8a !important;
-    font-weight: 900 !important;
-  }}
-  [data-testid="stWidgetLabel"] p {{
-    color: #334155 !important;
-    font-weight: 600 !important;
-    font-size: 0.84rem !important;
-  }}
-  .stCaption p, [data-testid="stCaptionContainer"] p {{
-    color: #64748b !important;
-  }}
-  .stMarkdown h3, .stMarkdown h4 {{ color: #1e3a5f !important; }}
-  .stMarkdown strong {{ color: #0f172a !important; }}
-  [data-testid="stDataFrame"] th {{
-    color: #1e293b !important;
-    background: #dbeafe !important;
-    font-weight: 700 !important;
-  }}
+/* ── 1. Force app background to light ── */
+.stApp,
+[data-testid="stApp"],
+[data-testid="stAppViewContainer"],
+[data-testid="stMain"],
+[data-testid="stMainBlockContainer"],
+section.main,
+.main {{
+  background-color: {PALETTE['bg']} !important;
+}}
+.block-container {{
+  padding-top: 2.8rem !important;
+  padding-bottom: 2rem !important;
+  background-color: transparent !important;
+}}
 
-  /* ── Sidebar ── */
-  section[data-testid="stSidebar"] {{
-    background: linear-gradient(180deg, #03045e 0%, #023e8a 60%, #0077b6 100%);
-  }}
-  section[data-testid="stSidebar"] * {{ color: #e0f2fe !important; }}
-  section[data-testid="stSidebar"] .stRadio > div > label {{
-    background: rgba(255,255,255,0.07);
-    border-radius: 8px;
-    padding: 6px 10px;
-    margin: 2px 0;
-    transition: background 0.2s;
-  }}
-  section[data-testid="stSidebar"] .stRadio > div > label:hover {{
-    background: rgba(255,255,255,0.15);
-  }}
+/* ── 2. NUCLEAR: force dark text on ALL main content elements ──
+   This defeats dark-mode grey at every nesting level.           */
+[data-testid="stMainBlockContainer"] p,
+[data-testid="stMainBlockContainer"] span:not(.badge-normal):not(.badge-monitor):not(.badge-high):not(.badge-leak):not(.badge-priority),
+[data-testid="stMainBlockContainer"] label,
+[data-testid="stMainBlockContainer"] small,
+[data-testid="stMainBlockContainer"] li,
+[data-testid="stMainBlockContainer"] td,
+[data-testid="stMainBlockContainer"] h1,
+[data-testid="stMainBlockContainer"] h2,
+[data-testid="stMainBlockContainer"] h3,
+[data-testid="stMainBlockContainer"] h4,
+[data-testid="stMainBlockContainer"] h5 {{
+  color: #1e293b !important;
+}}
 
-  /* ── KPI Cards ── */
-  .kpi-card {{
-    background: #ffffff;
-    border-radius: 16px;
-    padding: 20px 18px 14px;
-    box-shadow: 0 2px 16px rgba(0,100,200,0.09);
-    border-top: 4px solid {PALETTE['primary']};
-    position: relative;
-    overflow: hidden;
-    height: 120px;
-  }}
-  .kpi-card::after {{
-    content: "";
-    position: absolute;
-    right: -20px; bottom: -20px;
-    width: 80px; height: 80px;
-    border-radius: 50%;
-    background: {PALETTE['light']};
-    opacity: 0.5;
-  }}
-  .kpi-label {{
-    font-size: 0.72rem; color: #64748b;
-    font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em;
-  }}
-  .kpi-value {{
-    font-size: 1.75rem; font-weight: 900;
-    color: {PALETTE['dark']}; line-height: 1.2; margin: 4px 0 2px;
-  }}
-  .kpi-sub {{ font-size: 0.72rem; color: #94a3b8; }}
-  .kpi-trend-up   {{ color: #ef4444; font-size: 0.78rem; font-weight:700; }}
-  .kpi-trend-down {{ color: #22c55e; font-size: 0.78rem; font-weight:700; }}
-  .kpi-trend-flat {{ color: #94a3b8; font-size: 0.78rem; font-weight:700; }}
+/* ── 3. Specific Streamlit component text ── */
+[data-testid="stMetricLabel"] p,
+[data-testid="stMetricLabel"] label,
+[data-testid="stMetricLabel"] div {{
+  color: #475569 !important;
+  font-size: 0.73rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.07em !important;
+}}
+[data-testid="stMetricValue"],
+[data-testid="stMetricValue"] div {{
+  color: #023e8a !important;
+  font-weight: 900 !important;
+}}
+[data-testid="stMetricDelta"] span {{
+  color: #64748b !important;
+}}
+[data-testid="stWidgetLabel"] p,
+[data-testid="stWidgetLabel"] label,
+[data-testid="stWidgetLabel"] span {{
+  color: #334155 !important;
+  font-weight: 600 !important;
+  font-size: 0.84rem !important;
+}}
+[data-testid="stCaptionContainer"] p,
+[data-testid="stCaptionContainer"] span,
+.stCaption p {{
+  color: #64748b !important;
+  font-size: 0.82rem !important;
+}}
+/* Multiselect tags */
+[data-testid="stMultiSelect"] span {{
+  color: #1e293b !important;
+}}
+/* Radio buttons, checkboxes */
+[data-testid="stRadio"] label span,
+[data-testid="stCheckbox"] label span {{
+  color: #1e293b !important;
+}}
+/* Markdown bold & headings outside cards */
+.stMarkdown p   {{ color: #1e293b !important; }}
+.stMarkdown h3  {{ color: #023e8a !important; font-weight: 800 !important; }}
+.stMarkdown h4  {{ color: #0369a1 !important; font-weight: 700 !important; }}
+.stMarkdown strong {{ color: #0f172a !important; }}
+.stMarkdown li  {{ color: #1e293b !important; }}
+.stMarkdown td,
+.stMarkdown th  {{ color: #1e293b !important; }}
+/* Table headers */
+.stMarkdown th  {{
+  background: #dbeafe !important;
+  font-weight: 700 !important;
+  color: #1e3a5f !important;
+}}
+/* DataFrame */
+[data-testid="stDataFrame"] th {{
+  color: #1e293b !important;
+  background: #dbeafe !important;
+  font-weight: 700 !important;
+}}
+[data-testid="stDataFrame"] td {{
+  color: #1e293b !important;
+}}
+/* Number input, text input */
+.stNumberInput input,
+.stTextInput input,
+.stDateInput input {{
+  color: #1e293b !important;
+  background: #ffffff !important;
+}}
+/* Selectbox, multiselect dropdown text */
+.stSelectbox div[data-baseweb="select"] span,
+.stMultiSelect div[data-baseweb="select"] span {{
+  color: #1e293b !important;
+}}
+/* Alert / info boxes */
+[data-testid="stAlert"] p {{
+  color: #1e293b !important;
+}}
 
-  /* ── Score Card ── */
-  .score-hero {{
-    background: linear-gradient(135deg, #03045e 0%, #0077b6 100%);
-    border-radius: 20px;
-    padding: 32px 36px;
-    color: #fff;
-    box-shadow: 0 8px 32px rgba(0,80,180,0.25);
-    margin-bottom: 16px;
-  }}
-  .score-hero h1 {{ font-size: 3.5rem; font-weight: 900; margin: 0; line-height:1; }}
-  .score-hero .grade {{ font-size: 2.2rem; font-weight: 800; }}
-  .score-hero p {{ color: #90caf9; margin: 4px 0 0; font-size: 0.9rem; }}
+/* ── 4. RESTORE white text on intentionally dark elements ── */
+.section-header,
+.section-header * {{ color: #ffffff !important; }}
+.score-hero,
+.score-hero p,
+.score-hero h1,
+.score-hero span {{ color: #ffffff !important; }}
+.score-hero p {{ color: #90caf9 !important; }}
+.sdg-chip {{ color: #ffffff !important; }}
+.badge-normal   {{ color: #166534 !important; }}
+.badge-monitor  {{ color: #854d0e !important; }}
+.badge-high     {{ color: #991b1b !important; }}
+.badge-leak     {{ color: #1e40af !important; }}
+.badge-priority {{ color: #4c1d95 !important; }}
 
-  /* ── Section header — solid pill, visible on light + dark ── */
-  .section-header {{
-    display: block;
-    font-size: 1.1rem; font-weight: 800; color: #ffffff;
-    background: linear-gradient(90deg, #0077b6 0%, #0096c7 55%, rgba(0,150,200,0.25) 100%);
-    padding: 10px 24px 10px 16px;
-    border-radius: 8px;
-    margin-top: 12px;
-    margin-bottom: 18px;
-    letter-spacing: 0.01em;
-    border-left: 5px solid #00e5ff;
-  }}
+/* ── 5. Sidebar stays dark with light text ── */
+section[data-testid="stSidebar"] {{
+  background: linear-gradient(180deg, #03045e 0%, #023e8a 60%, #0077b6 100%) !important;
+}}
+section[data-testid="stSidebar"] *,
+section[data-testid="stSidebar"] p,
+section[data-testid="stSidebar"] span,
+section[data-testid="stSidebar"] label {{
+  color: #e0f2fe !important;
+}}
+section[data-testid="stSidebar"] .stRadio > div > label {{
+  background: rgba(255,255,255,0.07);
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin: 2px 0;
+  transition: background 0.2s;
+}}
+section[data-testid="stSidebar"] .stRadio > div > label:hover {{
+  background: rgba(255,255,255,0.15);
+}}
 
-  /* ── Alert badges ── */
-  .badge-normal   {{ background:#dcfce7; color:#166534; padding:3px 10px; border-radius:20px; font-size:0.74rem; font-weight:700; }}
-  .badge-monitor  {{ background:#fef9c3; color:#854d0e; padding:3px 10px; border-radius:20px; font-size:0.74rem; font-weight:700; }}
-  .badge-high     {{ background:#fee2e2; color:#991b1b; padding:3px 10px; border-radius:20px; font-size:0.74rem; font-weight:700; }}
-  .badge-leak     {{ background:#dbeafe; color:#1e40af; padding:3px 10px; border-radius:20px; font-size:0.74rem; font-weight:700; }}
-  .badge-priority {{ background:#ede9fe; color:#4c1d95; padding:3px 10px; border-radius:20px; font-size:0.74rem; font-weight:700; }}
+/* ── 6. KPI Cards ── */
+.kpi-card {{
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 20px 18px 14px;
+  box-shadow: 0 2px 16px rgba(0,100,200,0.09);
+  border-top: 4px solid {PALETTE['primary']};
+  position: relative;
+  overflow: hidden;
+  height: 120px;
+}}
+.kpi-card::after {{
+  content: "";
+  position: absolute;
+  right: -20px; bottom: -20px;
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  background: {PALETTE['light']};
+  opacity: 0.5;
+}}
+.kpi-label {{
+  font-size: 0.72rem !important; color: #64748b !important;
+  font-weight: 700 !important; text-transform: uppercase;
+  letter-spacing: 0.07em;
+}}
+.kpi-value {{
+  font-size: 1.75rem !important; font-weight: 900 !important;
+  color: {PALETTE['dark']} !important; line-height: 1.2; margin: 4px 0 2px;
+}}
+.kpi-sub   {{ font-size: 0.72rem !important; color: #94a3b8 !important; }}
+.kpi-trend-up   {{ color: #ef4444 !important; font-size: 0.78rem; font-weight:700; }}
+.kpi-trend-down {{ color: #22c55e !important; font-size: 0.78rem; font-weight:700; }}
+.kpi-trend-flat {{ color: #64748b !important; font-size: 0.78rem; font-weight:700; }}
 
-  /* ── Recommendation cards ── */
-  .rec-card {{
-    background: #ffffff;
-    border-left: 5px solid {PALETTE['accent']};
-    border-radius: 12px;
-    padding: 14px 18px;
-    margin-bottom: 10px;
-    box-shadow: 0 2px 10px rgba(0,100,180,0.07);
-  }}
+/* ── 7. Score Card ── */
+.score-hero {{
+  background: linear-gradient(135deg, #03045e 0%, #0077b6 100%);
+  border-radius: 20px;
+  padding: 32px 36px;
+  box-shadow: 0 8px 32px rgba(0,80,180,0.25);
+  margin-bottom: 16px;
+}}
 
-  /* ── Roadmap table ── */
-  .roadmap-row {{
-    display: flex; align-items: center;
-    background: #fff; border-radius: 10px;
-    padding: 12px 16px; margin-bottom: 8px;
-    box-shadow: 0 1px 6px rgba(0,80,160,0.07);
-    gap: 16px;
-  }}
-  .roadmap-rank {{
-    font-size: 1.4rem; font-weight: 900; color: {PALETTE['primary']};
-    min-width: 36px;
-  }}
-  .roadmap-loc {{ font-weight: 700; color: {PALETTE['dark']}; font-size: 0.95rem; }}
-  .roadmap-action {{ color: #334155; font-size: 0.85rem; font-weight: 500; }}
-  .roadmap-aed {{
-    margin-left: auto;
-    background: {PALETTE['light']};
-    color: {PALETTE['dark']};
-    font-weight: 800; font-size: 0.9rem;
-    padding: 4px 12px; border-radius: 20px;
-    white-space: nowrap;
-  }}
+/* ── 8. Section header ── */
+.section-header {{
+  display: block;
+  font-size: 1.1rem; font-weight: 800;
+  background: linear-gradient(90deg, #0077b6 0%, #0096c7 55%, rgba(0,150,200,0.25) 100%);
+  padding: 10px 24px 10px 16px;
+  border-radius: 8px;
+  margin-top: 12px;
+  margin-bottom: 18px;
+  letter-spacing: 0.01em;
+  border-left: 5px solid #00e5ff;
+}}
 
-  /* ── Impact report ── */
-  .report-box {{
-    background: #fff; border-radius: 16px;
-    padding: 32px; box-shadow: 0 4px 24px rgba(0,80,160,0.10);
-  }}
-  .sdg-chip {{
-    display: inline-block;
-    background: #1d4ed8; color: #fff;
-    font-size: 0.78rem; font-weight: 700;
-    padding: 4px 12px; border-radius: 20px;
-    margin: 3px;
-  }}
+/* ── 9. Alert badges ── */
+.badge-normal   {{ background:#dcfce7; padding:3px 10px; border-radius:20px; font-size:0.74rem; font-weight:700; }}
+.badge-monitor  {{ background:#fef9c3; padding:3px 10px; border-radius:20px; font-size:0.74rem; font-weight:700; }}
+.badge-high     {{ background:#fee2e2; padding:3px 10px; border-radius:20px; font-size:0.74rem; font-weight:700; }}
+.badge-leak     {{ background:#dbeafe; padding:3px 10px; border-radius:20px; font-size:0.74rem; font-weight:700; }}
+.badge-priority {{ background:#ede9fe; padding:3px 10px; border-radius:20px; font-size:0.74rem; font-weight:700; }}
 
-  /* ── Divider ── */
-  hr {{ border: none; border-top: 1px solid #e2ecf5; margin: 22px 0; }}
+/* ── 10. Recommendation cards ── */
+.rec-card {{
+  background: #ffffff;
+  border-left: 5px solid {PALETTE['accent']};
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 10px rgba(0,100,180,0.07);
+}}
 
-  /* ── Benchmark bar ── */
-  .bench-bar-wrap {{ background: #e2ecf5; border-radius: 8px; height:14px; margin: 4px 0; }}
-  .bench-bar {{ border-radius: 8px; height: 14px; }}
+/* ── 11. Roadmap rows ── */
+.roadmap-row {{
+  display: flex; align-items: center;
+  background: #fff; border-radius: 10px;
+  padding: 12px 16px; margin-bottom: 8px;
+  box-shadow: 0 1px 6px rgba(0,80,160,0.07);
+  gap: 16px;
+}}
+.roadmap-rank   {{ font-size: 1.4rem; font-weight: 900; color: {PALETTE['primary']} !important; min-width: 36px; }}
+.roadmap-loc    {{ font-weight: 700; color: {PALETTE['dark']} !important; font-size: 0.95rem; }}
+.roadmap-action {{ color: #334155 !important; font-size: 0.85rem; font-weight: 500; }}
+.roadmap-aed    {{
+  margin-left: auto;
+  background: {PALETTE['light']};
+  color: {PALETTE['dark']} !important;
+  font-weight: 800; font-size: 0.9rem;
+  padding: 4px 12px; border-radius: 20px;
+  white-space: nowrap;
+}}
+
+/* ── 12. Impact report ── */
+.report-box {{ background: #fff; border-radius: 16px; padding: 32px; box-shadow: 0 4px 24px rgba(0,80,160,0.10); }}
+.sdg-chip   {{ display:inline-block; background:#1d4ed8; font-size:0.78rem; font-weight:700; padding:4px 12px; border-radius:20px; margin:3px; }}
+
+/* ── 13. Misc ── */
+hr {{ border: none; border-top: 1px solid #e2ecf5; margin: 22px 0; }}
+.bench-bar-wrap {{ background: #e2ecf5; border-radius: 8px; height:14px; margin: 4px 0; }}
+.bench-bar      {{ border-radius: 8px; height: 14px; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -1648,3 +1738,4 @@ Upload a CSV or Excel file from the sidebar. Your file must contain these column
 | 45–57 | D | Poor |
 | 0–44 | F | Critical |
         """)
+
