@@ -69,10 +69,52 @@ st.markdown(f"""
   .main {{ background: {PALETTE['bg']}; }}
   .block-container {{ padding-top: 2.8rem !important; padding-bottom: 2rem; }}
 
-  /* ── Ensure caption / small text is readable in Streamlit dark mode ── */
+  /* ════ FIX ALL GREY / INVISIBLE TEXT IN DARK MODE ════ */
+
+  /* Metric labels */
+  [data-testid="stMetricLabel"] p,
+  [data-testid="stMetricLabel"] label {{
+    color: #cbd5e1 !important;
+    font-size: 0.76rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }}
+  /* Metric delta */
+  [data-testid="stMetricDelta"] span {{ color: #94a3b8 !important; }}
+
+  /* All widget labels (multiselect, slider, input, date) */
+  [data-testid="stWidgetLabel"] p,
+  .stSlider label, .stNumberInput label,
+  .stTextInput label, .stDateInput label,
+  .stSelectbox label, .stMultiSelect label {{
+    color: #e2e8f0 !important;
+    font-weight: 600 !important;
+    font-size: 0.85rem !important;
+  }}
+
+  /* Caption / small text */
   .stCaption p, [data-testid="stCaptionContainer"] p,
   div[data-testid="stCaptionContainer"] span {{
     color: #94a3b8 !important;
+  }}
+
+  /* Markdown headings outside cards */
+  .stMarkdown h3, .stMarkdown h4 {{ color: #e2e8f0 !important; }}
+  .stMarkdown strong {{ color: #f0f9ff !important; }}
+
+  /* Checkbox labels */
+  .stCheckbox label span {{ color: #e2e8f0 !important; }}
+
+  /* Number inputs */
+  .stNumberInput input, .stTextInput input {{
+    color: #f0f9ff !important;
+  }}
+
+  /* Dataframe headers */
+  [data-testid="stDataFrame"] th {{
+    color: #e2e8f0 !important;
+    background: #1e3a5f !important;
   }}
 
   /* ── Sidebar ── */
@@ -469,17 +511,22 @@ CHART_LAYOUT = dict(
     plot_bgcolor="#f0f7ff",
     margin=dict(l=12, r=12, t=36, b=12),
     font=dict(family="Inter, Arial, sans-serif", size=12, color="#1e293b"),
-    xaxis=dict(
-        color="#1e293b", tickfont=dict(color="#1e293b"),
-        title_font=dict(color="#334155"),
-        gridcolor="#e2e8f0", linecolor="#cbd5e1",
-    ),
-    yaxis=dict(
-        color="#1e293b", tickfont=dict(color="#1e293b"),
-        title_font=dict(color="#334155"),
-        gridcolor="#e2e8f0", linecolor="#cbd5e1",
-    ),
 )
+
+_AXIS = dict(
+    color="#1e293b",
+    tickfont=dict(color="#1e293b", size=11),
+    title_font=dict(color="#334155", size=12),
+    gridcolor="#e2e8f0",
+    linecolor="#cbd5e1",
+    zerolinecolor="#cbd5e1",
+)
+
+def style_axes(fig):
+    """Apply dark-readable axis colours to any Plotly figure."""
+    fig.update_xaxes(**_AXIS)
+    fig.update_yaxes(**_AXIS)
+    return fig
 
 # ════════════════════════════════════════════
 # SIDEBAR
@@ -698,6 +745,8 @@ if page == "📊 Overview Dashboard":
         xaxis_title="Date", yaxis_title="Litres",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
+    style_axes(fig_daily)
+
     st.plotly_chart(fig_daily, use_container_width=True)
     st.caption("Forecast uses a 14-day linear trend projected 7 days forward. Shaded band = ±9% confidence range.")
 
@@ -730,6 +779,8 @@ if page == "📊 Overview Dashboard":
     fig_heat.update_traces(textfont=dict(size=11, color="#ffffff"))
     fig_heat.update_xaxes(tickfont=dict(color="#1e293b", size=12))
     fig_heat.update_yaxes(tickfont=dict(color="#1e293b", size=12))
+    style_axes(fig_heat)
+
     st.plotly_chart(fig_heat, use_container_width=True)
 
     st.markdown("---")
@@ -751,6 +802,8 @@ if page == "📊 Overview Dashboard":
         xaxis_title="Location", yaxis_title="Total Litres",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
+    style_axes(fig_loc)
+
     st.plotly_chart(fig_loc, use_container_width=True)
 
 
@@ -846,6 +899,8 @@ elif page == "📍 Location Analysis":
         xaxis_title="Location", yaxis_title="Total Litres",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
+    style_axes(fig_ae)
+
     st.plotly_chart(fig_ae, use_container_width=True)
 
     st.markdown("---")
@@ -869,6 +924,8 @@ elif page == "📍 Location Analysis":
     )
     fig_bub.update_traces(textposition="top center", marker=dict(opacity=0.8))
     fig_bub.update_layout(**CHART_LAYOUT, showlegend=False)
+    style_axes(fig_bub)
+
     st.plotly_chart(fig_bub, use_container_width=True)
 
     st.markdown("---")
@@ -899,6 +956,8 @@ elif page == "📍 Location Analysis":
     )
     fig_bench.update_layout(**CHART_LAYOUT, height=320,
                             xaxis_title="Location", yaxis_title="Avg L / Person")
+    style_axes(fig_bench)
+
     st.plotly_chart(fig_bench, use_container_width=True)
 
 
@@ -966,6 +1025,8 @@ elif page == "🔍 Leak Detection":
                              ticktext=["Normal","Monitor","High","Leak","Priority"],
                              thickness=14, title="",
                          ))
+    style_axes(fig_tl)
+
     st.plotly_chart(fig_tl, use_container_width=True)
 
     st.markdown("---")
@@ -1364,6 +1425,8 @@ elif page == "📄 Impact Report":
     fig_proj.add_trace(go.Bar(name="Projected",x=categories, y=values_new, marker_color="#22c55e", opacity=0.85))
     fig_proj.update_layout(**CHART_LAYOUT, barmode="group", height=320,
                            yaxis_title="m³", legend=dict(orientation="h", y=1.05))
+    style_axes(fig_proj)
+
     st.plotly_chart(fig_proj, use_container_width=True)
 
     st.markdown("---")
