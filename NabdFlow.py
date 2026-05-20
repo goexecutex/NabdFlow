@@ -5,7 +5,7 @@ import {
   PieChart, Pie, Cell
 } from "recharts";
 
-// ── TOKENS ──────────────────────────────────────────
+// TOKENS
 const C = {
   bg:       '#050d1c',
   surface:  '#081525',
@@ -26,7 +26,7 @@ const C = {
   grid:     'rgba(255,255,255,0.04)',
 };
 
-// ── DATA ────────────────────────────────────────────
+// DATA
 const ZONES = [
   { id:1, name:"Main Academic Building", short:"MAB", icon:"🏛️", baseline:450, current:421, status:"normal",  eff:94 },
   { id:2, name:"Science & Tech Block",   short:"STB", icon:"🔬", baseline:380, current:512, status:"anomaly", eff:65 },
@@ -68,7 +68,7 @@ const PIE_DATA = ZONES.map(z => ({
   fill: z.status==='leak' ? C.red : z.status==='anomaly'||z.status==='alert' ? C.yellow : C.accent
 }));
 
-// ── HELPERS ─────────────────────────────────────────
+// HELPERS
 const sColor = s => ({ normal:C.green, anomaly:C.yellow, alert:C.yellow, leak:C.red, resolved:C.muted }[s]||C.muted);
 const sLabel = s => ({ normal:'Normal', anomaly:'Anomaly', alert:'Alert', leak:'⚠ Leak', resolved:'Resolved' }[s]||s);
 const sevBg  = s => ({ critical:C.rAlpha, high:C.yAlpha, medium:C.yAlpha, low:C.aAlpha, resolved:'rgba(90,138,170,0.08)' }[s]||'transparent');
@@ -117,7 +117,7 @@ const Btn = ({ onClick, disabled, color, children }) => (
   </button>
 );
 
-// ── MAIN ────────────────────────────────────────────
+// MAIN
 export default function NabdFlow() {
   const [tab, setTab]             = useState("dashboard");
   const [live, setLive]           = useState(847);
@@ -233,7 +233,7 @@ Use formal report language. Be specific with all numbers.` }]);
     { id:"chat",          label:"AI Chat",        icon:"💬" },
   ];
 
-  // ── VIEWS ──────────────────────────────────────────
+  // VIEWS
   const Dashboard = () => (
     <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
       <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
@@ -561,7 +561,7 @@ Use formal report language. Be specific with all numbers.` }]);
 
   const activeCount = ALERTS.filter(a=>a.sev!=='resolved').length;
 
-  // ── SHELL ──────────────────────────────────────────
+  // SHELL
   return (
     <div style={{ background:C.bg, color:C.text, fontFamily:"system-ui,-apple-system,sans-serif", minHeight:'100vh', display:'flex', fontSize:14 }}>
       {/* SIDEBAR */}
