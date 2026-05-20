@@ -120,8 +120,10 @@ BASE_LAYOUT = dict(
     margin=dict(l=40, r=10, t=10, b=30),
     xaxis=dict(gridcolor=GRID, showgrid=True, zeroline=False),
     yaxis=dict(gridcolor=GRID, showgrid=True, zeroline=False),
-    legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(size=10)),
 )
+LEGEND_DEFAULT  = dict(bgcolor="rgba(0,0,0,0)", font=dict(size=10))
+LEGEND_TOP      = dict(bgcolor="rgba(0,0,0,0)", font=dict(size=10), orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+LEGEND_BOTTOM   = dict(bgcolor="rgba(0,0,0,0)", font=dict(size=9),  orientation="h", y=-0.15)
 
 # ------------------------------------------------------------
 # SESSION STATE
@@ -284,8 +286,7 @@ if nav == "📊  Overview Dashboard":
         x=HOURLY["Hour"], y=HOURLY["Actual"], name="Actual",
         line=dict(color=ACCENT, width=2.5),
         fill="tozeroy", fillcolor="rgba(0,200,255,0.08)"))
-    fig_hourly.update_layout(**BASE_LAYOUT, height=240,
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+    fig_hourly.update_layout(**BASE_LAYOUT, height=240, legend=LEGEND_TOP)
 
     st.markdown('<div class="nabdcard">', unsafe_allow_html=True)
     st.markdown(f"<div style='font-weight:700;font-size:13px'>Today's Hourly Water Consumption</div>", unsafe_allow_html=True)
@@ -326,7 +327,7 @@ if nav == "📊  Overview Dashboard":
                                   marker_color=ACCENT, marker_opacity=0.65, marker_line_width=0))
         fig_week.add_trace(go.Bar(x=WEEKLY["Day"], y=WEEKLY["Saved"], name="Saved m³",
                                   marker_color=GREEN, marker_opacity=0.85, marker_line_width=0))
-        fig_week.update_layout(**BASE_LAYOUT, barmode="group", height=200)
+        fig_week.update_layout(**BASE_LAYOUT, barmode="group", height=200, legend=LEGEND_DEFAULT)
         st.markdown('<div class="nabdcard">', unsafe_allow_html=True)
         st.markdown(f"<div style='font-weight:700;font-size:13px;margin-bottom:4px'>Weekly Usage vs Savings</div>", unsafe_allow_html=True)
         st.plotly_chart(fig_week, use_container_width=True, config={"displayModeBar": False})
@@ -340,8 +341,7 @@ if nav == "📊  Overview Dashboard":
             hole=0.5,
             marker=dict(colors=zone_colors, line=dict(color="#050d1c", width=2))
         ))
-        fig_pie.update_layout(**BASE_LAYOUT, height=190,
-            legend=dict(font=dict(size=9), orientation="h", y=-0.15))
+        fig_pie.update_layout(**BASE_LAYOUT, height=190, showlegend=True, legend=LEGEND_BOTTOM)
         st.markdown('<div class="nabdcard">', unsafe_allow_html=True)
         st.markdown(f"<div style='font-weight:700;font-size:13px;margin-bottom:4px'>Consumption by Zone</div>", unsafe_allow_html=True)
         st.plotly_chart(fig_pie, use_container_width=True, config={"displayModeBar": False})
@@ -491,7 +491,7 @@ elif nav == "🌿  Sustainability Hub":
             x=WEEKLY["Day"], y=WEEKLY["AED"], name="AED Saved",
             marker_color=YELLOW, marker_opacity=0.85, marker_line_width=0,
         ))
-        fig_aed.update_layout(**BASE_LAYOUT, height=230)
+        fig_aed.update_layout(**BASE_LAYOUT, height=230, legend=LEGEND_DEFAULT)
         st.markdown('<div class="nabdcard">', unsafe_allow_html=True)
         st.markdown(f"<div style='font-weight:700;font-size:13px;margin-bottom:4px'>AED Savings per Day This Week</div>", unsafe_allow_html=True)
         st.plotly_chart(fig_aed, use_container_width=True, config={"displayModeBar": False})
