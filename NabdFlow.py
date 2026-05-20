@@ -1,653 +1,587 @@
-import { useState, useEffect, useRef } from "react";
-import {
-  AreaChart, Area, BarChart, Bar, LineChart, Line,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell
-} from "recharts";
+# ============================================================
+#  NabdFlow — AI-Powered Water Intelligence | Streamlit App
+#  Requirements: pip install streamlit plotly pandas numpy anthropic
+#  API Key:  Add  ANTHROPIC_API_KEY = "sk-..."  to .streamlit/secrets.toml
+# ============================================================
 
-// TOKENS
-const C = {
-  bg:       '#050d1c',
-  surface:  '#081525',
-  card:     '#0d1e38',
-  border:   '#163557',
-  accent:   '#00c8ff',
-  aAlpha:   'rgba(0,200,255,0.12)',
-  green:    '#00e5a0',
-  gAlpha:   'rgba(0,229,160,0.10)',
-  yellow:   '#ffb347',
-  yAlpha:   'rgba(255,179,71,0.10)',
-  red:      '#ff5272',
-  rAlpha:   'rgba(255,82,114,0.10)',
-  purple:   '#a78bfa',
-  pAlpha:   'rgba(167,139,250,0.10)',
-  text:     '#d8eeff',
-  muted:    '#5a8aaa',
-  grid:     'rgba(255,255,255,0.04)',
-};
+import streamlit as st
+import plotly.graph_objects as go
+import pandas as pd
+import numpy as np
+import random
+from datetime import datetime
 
-// DATA
-const ZONES = [
-  { id:1, name:"Main Academic Building", short:"MAB", icon:"🏛️", baseline:450, current:421, status:"normal",  eff:94 },
-  { id:2, name:"Science & Tech Block",   short:"STB", icon:"🔬", baseline:380, current:512, status:"anomaly", eff:65 },
-  { id:3, name:"Student Housing A",      short:"SHA", icon:"🏘️", baseline:820, current:798, status:"normal",  eff:97 },
-  { id:4, name:"Student Housing B",      short:"SHB", icon:"🏠", baseline:750, current:901, status:"alert",   eff:72 },
-  { id:5, name:"Sports Complex",         short:"SPC", icon:"⚽", baseline:600, current:578, status:"normal",  eff:96 },
-  { id:6, name:"Library & Research",     short:"LIB", icon:"📚", baseline:220, current:215, status:"normal",  eff:98 },
-  { id:7, name:"Cafeteria & Dining",     short:"CAF", icon:"🍽️", baseline:480, current:503, status:"normal",  eff:89 },
-  { id:8, name:"Admin & Offices",        short:"ADM", icon:"💼", baseline:180, current:267, status:"leak",    eff:58 },
-];
+# ------------------------------------------------------------
+# PAGE CONFIG
+# ------------------------------------------------------------
+st.set_page_config(
+    page_title="NabdFlow | Water Intelligence",
+    page_icon="💧",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-const ALERTS = [
-  { id:1, type:"leak",     zone:"Admin & Offices",      msg:"Pipe leak detected — 87 L/hr excess flow after business hours",          time:"12m ago", aed:43.5, sev:"critical" },
-  { id:2, type:"anomaly",  zone:"Student Housing B",    msg:"Consumption 20% above 7-day baseline for 3+ consecutive hours",           time:"47m ago", aed:28.2, sev:"high"     },
-  { id:3, type:"anomaly",  zone:"Science & Tech Block", msg:"Lab cooling water spike — possible thermostatic valve failure",            time:"1.5h ago",aed:18.7, sev:"medium"   },
-  { id:4, type:"info",     zone:"Cafeteria & Dining",   msg:"Usage slightly above average — catering event likely in progress",         time:"3h ago",  aed:6.3,  sev:"low"      },
-  { id:5, type:"resolved", zone:"Sports Complex",       msg:"Irrigation anomaly resolved — system returned to normal baseline",         time:"5h ago",  aed:0,    sev:"resolved" },
-];
+# ------------------------------------------------------------
+# CUSTOM CSS
+# ------------------------------------------------------------
+st.markdown("""
+<style>
+  .stApp { background-color: #050d1c; color: #d8eeff; }
+  section[data-testid="stSidebar"] {
+      background-color: #081525 !important;
+      border-right: 1px solid #163557;
+  }
+  .block-container { padding-top: 1.5rem; padding-bottom: 1rem; }
+  div[data-testid="metric-container"] {
+      background: #0d1e38;
+      border: 1px solid #163557;
+      border-radius: 12px;
+      padding: 14px 16px !important;
+  }
+  [data-testid="stMetricLabel"]  { color: #5a8aaa !important; font-size: 10px !important;
+                                    text-transform: uppercase; letter-spacing: 1px; }
+  [data-testid="stMetricValue"]  { color: #d8eeff !important; font-size: 22px !important;
+                                    font-weight: 800 !important; }
+  [data-testid="stMetricDelta"]  { font-size: 10px !important; }
+  .stButton > button {
+      background: linear-gradient(135deg, #00c8ff, #0055ff) !important;
+      color: #04111f !important; font-weight: 700 !important;
+      border: none !important; border-radius: 8px !important;
+  }
+  .stButton > button:hover { opacity: 0.88; }
+  .stChatMessage { background: #0d1e38 !important; border: 1px solid #163557 !important; border-radius: 10px !important; }
+  .stChatInputContainer > div { background: #0d1e38 !important; border: 1px solid #163557 !important; border-radius: 8px !important; }
+  .stChatInputContainer input  { color: #d8eeff !important; }
+  h1, h2, h3 { color: #d8eeff !important; }
+  hr { border-color: #163557; }
+  .stRadio > div > label { color: #5a8aaa !important; }
+  .stRadio > div > label:hover { color: #d8eeff !important; }
+  div[data-baseweb="radio"] input:checked + div { background-color: #00c8ff !important; }
+  .nabdcard {
+      background: #0d1e38; border: 1px solid #163557;
+      border-radius: 12px; padding: 16px 18px; margin-bottom: 12px;
+  }
+</style>
+""", unsafe_allow_html=True)
 
-const WEEKLY = [
-  { d:"Mon", usage:18240, saved:2840, aed:1022 },
-  { d:"Tue", usage:17890, saved:3190, aed:1148 },
-  { d:"Wed", usage:19100, saved:1900, aed:684  },
-  { d:"Thu", usage:17200, saved:3800, aed:1368 },
-  { d:"Fri", usage:15600, saved:4200, aed:1512 },
-  { d:"Sat", usage:9800,  saved:5600, aed:2016 },
-  { d:"Sun", usage:8900,  saved:6100, aed:2196 },
-];
+# ------------------------------------------------------------
+# DATA
+# ------------------------------------------------------------
+ZONES = [
+    {"id":1,"name":"Main Academic Building","short":"MAB","icon":"🏛️","baseline":450,"current":421,"status":"normal", "eff":94},
+    {"id":2,"name":"Science & Tech Block",  "short":"STB","icon":"🔬","baseline":380,"current":512,"status":"anomaly","eff":65},
+    {"id":3,"name":"Student Housing A",     "short":"SHA","icon":"🏘️","baseline":820,"current":798,"status":"normal", "eff":97},
+    {"id":4,"name":"Student Housing B",     "short":"SHB","icon":"🏠","baseline":750,"current":901,"status":"alert",  "eff":72},
+    {"id":5,"name":"Sports Complex",        "short":"SPC","icon":"⚽","baseline":600,"current":578,"status":"normal", "eff":96},
+    {"id":6,"name":"Library & Research",    "short":"LIB","icon":"📚","baseline":220,"current":215,"status":"normal", "eff":98},
+    {"id":7,"name":"Cafeteria & Dining",    "short":"CAF","icon":"🍽️","baseline":480,"current":503,"status":"normal", "eff":89},
+    {"id":8,"name":"Admin & Offices",       "short":"ADM","icon":"💼","baseline":180,"current":267,"status":"leak",   "eff":58},
+]
 
-const genHourly = () => Array.from({ length:24 }, (_,i) => {
-  const b = 120 + Math.sin(i/3.5)*55 + (i>=7&&i<=19 ? 105 : 0);
-  return { h:`${String(i).padStart(2,'0')}:00`, actual:Math.round(b+(Math.random()*25-5)), predicted:Math.round(b*1.06), baseline:Math.round(b*1.22) };
-});
-const HOURLY = genHourly();
+ALERTS = [
+    {"type":"leak",    "zone":"Admin & Offices",      "msg":"Pipe leak — 87 L/hr excess flow detected after business hours",        "time":"12m ago","aed":43.5,"sev":"critical"},
+    {"type":"anomaly", "zone":"Student Housing B",    "msg":"Consumption 20% above 7-day baseline for 3+ consecutive hours",         "time":"47m ago","aed":28.2,"sev":"high"},
+    {"type":"anomaly", "zone":"Science & Tech Block", "msg":"Lab cooling water spike — possible thermostatic valve failure",          "time":"1.5h ago","aed":18.7,"sev":"medium"},
+    {"type":"info",    "zone":"Cafeteria & Dining",   "msg":"Usage slightly above average — catering event likely in progress",       "time":"3h ago","aed":6.3,"sev":"low"},
+    {"type":"resolved","zone":"Sports Complex",       "msg":"Irrigation anomaly resolved — system returned to normal baseline",       "time":"5h ago","aed":0,"sev":"resolved"},
+]
 
-const PIE_DATA = ZONES.map(z => ({
-  name: z.short,
-  value: z.current,
-  fill: z.status==='leak' ? C.red : z.status==='anomaly'||z.status==='alert' ? C.yellow : C.accent
-}));
+WEEKLY = pd.DataFrame({
+    "Day":   ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
+    "Usage": [18240,17890,19100,17200,15600,9800,8900],
+    "Saved": [2840,3190,1900,3800,4200,5600,6100],
+    "AED":   [1022,1148,684,1368,1512,2016,2196],
+})
 
-// HELPERS
-const sColor = s => ({ normal:C.green, anomaly:C.yellow, alert:C.yellow, leak:C.red, resolved:C.muted }[s]||C.muted);
-const sLabel = s => ({ normal:'Normal', anomaly:'Anomaly', alert:'Alert', leak:'⚠ Leak', resolved:'Resolved' }[s]||s);
-const sevBg  = s => ({ critical:C.rAlpha, high:C.yAlpha, medium:C.yAlpha, low:C.aAlpha, resolved:'rgba(90,138,170,0.08)' }[s]||'transparent');
-const sevClr = s => ({ critical:C.red, high:C.yellow, medium:C.yellow, low:C.accent, resolved:C.muted }[s]||C.muted);
-const ttStyle = { background:C.card, border:`1px solid ${C.border}`, borderRadius:8, fontSize:11, color:C.text };
+np.random.seed(42)
+_base = [120 + np.sin(i/3.5)*55 + (105 if 7<=i<=19 else 0) for i in range(24)]
+HOURLY = pd.DataFrame({
+    "Hour":      [f"{str(i).zfill(2)}:00" for i in range(24)],
+    "Actual":    [max(0, int(b + np.random.normal(0,14))) for b in _base],
+    "Predicted": [int(b*1.06) for b in _base],
+    "Baseline":  [int(b*1.22) for b in _base],
+})
 
-const Dot = ({ color }) => (
-  <span style={{ display:'inline-block', width:7, height:7, borderRadius:'50%', background:color, marginRight:5, flexShrink:0 }} />
-);
+# ------------------------------------------------------------
+# CHART THEME
+# ------------------------------------------------------------
+BG     = "#0d1e38"
+GRID   = "rgba(255,255,255,0.04)"
+MUTED  = "#5a8aaa"
+ACCENT = "#00c8ff"
+GREEN  = "#00e5a0"
+YELLOW = "#ffb347"
+RED    = "#ff5272"
+PURPLE = "#a78bfa"
 
-const KPICard = ({ label, value, unit, sub, color, icon }) => (
-  <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:'16px 18px', flex:1, minWidth:130 }}>
-    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-      <div style={{ flex:1 }}>
-        <div style={{ color:C.muted, fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:1 }}>{label}</div>
-        <div style={{ color:color||C.text, fontSize:24, fontWeight:800, marginTop:5, lineHeight:1 }}>
-          {value}<span style={{ fontSize:12, fontWeight:400, marginLeft:3, color:C.muted }}>{unit}</span>
-        </div>
-        {sub && <div style={{ color:C.muted, fontSize:10, marginTop:5 }}>{sub}</div>}
-      </div>
-      <div style={{ fontSize:22, opacity:0.85 }}>{icon}</div>
-    </div>
-  </div>
-);
+BASE_LAYOUT = dict(
+    paper_bgcolor=BG, plot_bgcolor=BG,
+    font=dict(color=MUTED, size=11),
+    margin=dict(l=40, r=10, t=10, b=30),
+    xaxis=dict(gridcolor=GRID, showgrid=True, zeroline=False),
+    yaxis=dict(gridcolor=GRID, showgrid=True, zeroline=False),
+    legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(size=10)),
+)
 
-const Section = ({ title, sub, children, action }) => (
-  <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:20 }}>
-    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+# ------------------------------------------------------------
+# SESSION STATE
+# ------------------------------------------------------------
+defaults = {"chat": [{"role":"assistant","content":"Hello! I'm NabdFlow AI. Ask me anything about campus water systems — anomalies, leaks, predictions, savings, or sustainability metrics."}],
+            "insights": "", "report": ""}
+for k, v in defaults.items():
+    if k not in st.session_state:
+        st.session_state[k] = v
+
+# ------------------------------------------------------------
+# AI HELPER
+# ------------------------------------------------------------
+SYSTEM = """You are NabdFlow AI Engine — an expert water intelligence system for a UAE university campus.
+Current campus snapshot:
+- 8 monitored zones | 3 active anomalies
+- CRITICAL: Admin & Offices — pipe leak, 87L/hr excess, efficiency 58%
+- HIGH: Student Housing B — 20% above baseline, efficiency 72%
+- MEDIUM: Science & Tech Block — cooling spike, efficiency 65%
+- Today: 18,247 m3 consumed | Baseline: 20,587 m3 | Saved: 2,340 m3 (11.4%)
+- AED saved today: 847 AED | Tariff: ~0.36 AED/m3
+- Campus efficiency score: 78/100 (up 4 pts from last week)
+Be precise, professional, and data-driven. Use markdown headers for structure."""
+
+def call_claude(messages: list) -> str:
+    try:
+        import anthropic
+        key = st.secrets.get("ANTHROPIC_API_KEY", "")
+        if not key:
+            return "**No API key found.** Add `ANTHROPIC_API_KEY = 'sk-...'` to `.streamlit/secrets.toml`."
+        client = anthropic.Anthropic(api_key=key)
+        resp = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1000,
+            system=SYSTEM,
+            messages=messages
+        )
+        return resp.content[0].text
+    except ImportError:
+        return "**anthropic library not installed.** Run: `pip install anthropic`"
+    except Exception as e:
+        return f"**Error:** {e}"
+
+# ------------------------------------------------------------
+# HELPERS
+# ------------------------------------------------------------
+def status_badge(s: str) -> str:
+    cfg = {
+        "normal":  ("#00e5a0","rgba(0,229,160,0.12)","Normal"),
+        "anomaly": ("#ffb347","rgba(255,179,71,0.12)","Anomaly"),
+        "alert":   ("#ffb347","rgba(255,179,71,0.12)","Alert"),
+        "leak":    ("#ff5272","rgba(255,82,114,0.12)","Leak"),
+        "resolved":("#5a8aaa","rgba(90,138,170,0.08)","Resolved"),
+    }
+    c, bg, lbl = cfg.get(s, (MUTED,"transparent",s))
+    return (f'<span style="background:{bg};color:{c};padding:2px 10px;'
+            f'border-radius:20px;font-size:11px;font-weight:700">{lbl}</span>')
+
+def eff_color(e: int) -> str:
+    return GREEN if e >= 90 else (YELLOW if e >= 70 else RED)
+
+def sev_color(s: str) -> str:
+    return {"critical":RED,"high":YELLOW,"medium":YELLOW,"low":ACCENT,"resolved":MUTED}.get(s, MUTED)
+
+def sev_bg(s: str) -> str:
+    return {"critical":"rgba(255,82,114,0.12)","high":"rgba(255,179,71,0.12)",
+            "medium":"rgba(255,179,71,0.10)","low":"rgba(0,200,255,0.10)",
+            "resolved":"rgba(90,138,170,0.08)"}.get(s, "transparent")
+
+def section_header(title: str, subtitle: str = ""):
+    st.markdown(f"""
+    <div class="nabdcard" style="margin-bottom:8px">
+      <div style="font-weight:700;font-size:14px">{title}</div>
+      {"" if not subtitle else f'<div style="color:{MUTED};font-size:11px;margin-top:3px">{subtitle}</div>'}
+    </div>""", unsafe_allow_html=True)
+
+# ------------------------------------------------------------
+# SIDEBAR
+# ------------------------------------------------------------
+with st.sidebar:
+    st.markdown(f"""
+    <div style="display:flex;align-items:center;gap:10px;padding:4px 0 14px">
+      <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#00c8ff,#0055ff);
+           display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">💧</div>
       <div>
-        <div style={{ fontWeight:700, fontSize:14 }}>{title}</div>
-        {sub && <div style={{ color:C.muted, fontSize:11, marginTop:3 }}>{sub}</div>}
+        <div style="font-weight:900;font-size:17px;color:#d8eeff">NabdFlow</div>
+        <div style="color:{MUTED};font-size:9px;letter-spacing:1.5px;text-transform:uppercase">Water Intelligence</div>
       </div>
-      {action}
     </div>
-    {children}
-  </div>
-);
+    <div style="color:{MUTED};font-size:10px;margin-bottom:14px">&#1606;&#1576;&#1590; &#1575;&#1604;&#1605;&#1610;&#1575;&#1607; &#1575;&#1604;&#1584;&#1603;&#1610; &middot; UAE Campus</div>
+    <div style="background:rgba(0,229,160,0.06);border:1px solid rgba(0,229,160,0.2);border-radius:8px;
+         padding:8px 12px;margin-bottom:18px;display:flex;align-items:center;gap:8px">
+      <span style="display:inline-block;width:8px;height:8px;background:#00e5a0;border-radius:50%;
+            box-shadow:0 0 8px #00e5a0"></span>
+      <span style="color:#00e5a0;font-size:11px;font-weight:700">LIVE</span>
+      <span style="color:{MUTED};font-size:11px">{random.randint(841,857)} L/min</span>
+    </div>""", unsafe_allow_html=True)
 
-const Btn = ({ onClick, disabled, color, children }) => (
-  <button onClick={onClick} disabled={disabled}
-    style={{ background: disabled?'rgba(255,255,255,0.05)':color==='green'?C.green:C.accent,
-      color: disabled?C.muted:'#04111f', border:'none', borderRadius:8,
-      padding:'9px 18px', fontWeight:700, fontSize:12, cursor: disabled?'not-allowed':'pointer', transition:'opacity 0.2s',
-      whiteSpace:'nowrap' }}>
-    {children}
-  </button>
-);
+    nav = st.radio("nav", [
+        "📊  Overview Dashboard",
+        "🗺️  Zone Intelligence",
+        "🚨  Anomaly & Alerts",
+        "🤖  AI Insights Engine",
+        "🌿  Sustainability Hub",
+        "💬  AI Chat Assistant",
+    ], label_visibility="collapsed")
 
-// MAIN
-export default function NabdFlow() {
-  const [tab, setTab]             = useState("dashboard");
-  const [live, setLive]           = useState(847);
-  const [aiText, setAiText]       = useState("");
-  const [aiLoading, setAiLoading] = useState(false);
-  const [rptText, setRptText]     = useState("");
-  const [rptLoading, setRptLoading]= useState(false);
-  const [msgs, setMsgs]           = useState([{ role:"assistant", text:"Hello! I'm NabdFlow AI. Ask me anything about your campus water systems — anomalies, leaks, consumption patterns, or sustainability insights." }]);
-  const [chatIn, setChatIn]       = useState("");
-  const [chatLoad, setChatLoad]   = useState(false);
-  const [selZone, setSelZone]     = useState(null);
-  const chatRef = useRef(null);
+    st.markdown(f"<hr style='border-color:#163557;margin:12px 0'>", unsafe_allow_html=True)
+    st.markdown(f"<div style='color:{MUTED};font-size:9px;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:10px'>Campus Status</div>", unsafe_allow_html=True)
+    c1, c2 = st.columns(2)
+    c1.metric("Zones",      "8");     c1.metric("Efficiency", "78%")
+    c2.metric("Alerts 🔴",  "3");     c2.metric("Saved", "847 AED")
 
-  useEffect(() => {
-    const iv = setInterval(() => setLive(v => +(v+(Math.random()*12-6)).toFixed(1)), 1800);
-    return () => clearInterval(iv);
-  }, []);
+# ------------------------------------------------------------
+# MAIN HEADER
+# ------------------------------------------------------------
+TITLES = {
+    "📊  Overview Dashboard": "📊 Overview Dashboard",
+    "🗺️  Zone Intelligence":  "🗺️ Zone Intelligence",
+    "🚨  Anomaly & Alerts":   "🚨 Anomaly & Alert Center",
+    "🤖  AI Insights Engine": "🤖 AI Insights Engine",
+    "🌿  Sustainability Hub":  "🌿 Sustainability Hub",
+    "💬  AI Chat Assistant":  "💬 AI Chat Assistant",
+}
+hc1, hc2 = st.columns([4, 1])
+with hc1:
+    st.markdown(f"<h1 style='margin:0;font-size:21px;font-weight:900'>{TITLES.get(nav,nav)}</h1>", unsafe_allow_html=True)
+    st.markdown(f"<div style='color:{MUTED};font-size:11px;margin-top:2px'>University Campus &middot; NabdFlow AI &middot; {datetime.now().strftime('%A, %d %B %Y')}</div>", unsafe_allow_html=True)
+with hc2:
+    if st.button("✨ AI Analysis"):
+        st.session_state["insights"] = ""
 
-  useEffect(() => {
-    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
-  }, [msgs]);
+st.markdown(f"<div style='border-bottom:1px solid #163557;margin:10px 0 16px'></div>", unsafe_allow_html=True)
 
-  const SYS = `You are NabdFlow AI Engine — an expert water intelligence system for a UAE university campus.
-Current campus snapshot (real-time):
-• 8 monitored zones, 3 active anomalies
-• CRITICAL: Admin & Offices — pipe leak, 87L/hr excess, efficiency 58%
-• HIGH: Student Housing B — 20% above baseline, efficiency 72%  
-• MEDIUM: Science & Tech Block — cooling water spike, efficiency 65%
-• Today's total: 18,247 m³ | Baseline: 20,587 m³ | Saved: 2,340 m³ (11.4%)
-• AED saved today: 847 AED | Water tariff: ~0.36 AED/m³
-• Campus efficiency score: 78/100 (↑4 pts vs last week)
-Be precise, professional, and data-driven. Format with clear sections using markdown headers.`;
+# ============================================================
+# VIEW: OVERVIEW DASHBOARD
+# ============================================================
+if nav == "📊  Overview Dashboard":
 
-  const callAI = async (messages) => {
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:1000, system:SYS, messages })
-    });
-    const d = await r.json();
-    return d.content?.[0]?.text || "No response received.";
-  };
+    # KPIs
+    k1,k2,k3,k4,k5 = st.columns(5)
+    k1.metric("💧 Consumption Today", "18,247 m³",  "↓ 11.4% vs baseline")
+    k2.metric("⚡ Live Flow Rate",     f"{random.randint(843,856)} L/min", "All zones")
+    k3.metric("💰 AED Saved Today",    "847 AED",    "+vs projected")
+    k4.metric("🚨 Active Alerts",      "3",          "1 critical · 1 high")
+    k5.metric("📈 Efficiency Score",   "78 / 100",   "↑ 4 pts this week")
 
-  const runInsights = async () => {
-    setAiLoading(true); setTab("ai");
-    try {
-      const t = await callAI([{ role:"user", content:`Analyze today's campus water data and provide:
+    st.markdown("")
 
-## 🔍 Key Findings
-(3 critical observations with specific figures)
+    # Hourly chart
+    fig_hourly = go.Figure()
+    fig_hourly.add_trace(go.Scatter(
+        x=HOURLY["Hour"], y=HOURLY["Baseline"], name="Baseline",
+        line=dict(color=MUTED, dash="dot", width=1.5)))
+    fig_hourly.add_trace(go.Scatter(
+        x=HOURLY["Hour"], y=HOURLY["Predicted"], name="Predicted",
+        line=dict(color=PURPLE, width=1.5),
+        fill="tozeroy", fillcolor="rgba(167,139,250,0.05)"))
+    fig_hourly.add_trace(go.Scatter(
+        x=HOURLY["Hour"], y=HOURLY["Actual"], name="Actual",
+        line=dict(color=ACCENT, width=2.5),
+        fill="tozeroy", fillcolor="rgba(0,200,255,0.08)"))
+    fig_hourly.update_layout(**BASE_LAYOUT, height=240,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
 
-## 🚨 Priority Actions Required
-(ranked by urgency — include estimated resolution time)
+    st.markdown('<div class="nabdcard">', unsafe_allow_html=True)
+    st.markdown(f"<div style='font-weight:700;font-size:13px'>Today's Hourly Water Consumption</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='color:{MUTED};font-size:11px;margin-bottom:6px'>Actual vs Predicted vs Baseline &middot; m&sup3;/hr &middot; All zones</div>", unsafe_allow_html=True)
+    st.plotly_chart(fig_hourly, use_container_width=True, config={"displayModeBar": False})
+    st.markdown("</div>", unsafe_allow_html=True)
 
-## 📈 24-Hour Demand Forecast
-(expected pattern and risk windows)
+    st.markdown("")
+    left, right = st.columns([2, 1])
 
-## 💡 Quick-Win Optimizations
-(3 actions with estimated AED + m³ savings each)
-
-## 📊 Efficiency Score Breakdown
-(what's driving 78/100 and how to reach 90+)` }]);
-      setAiText(t);
-    } catch { setAiText("⚠️ AI connection error. Please try again."); }
-    setAiLoading(false);
-  };
-
-  const runReport = async () => {
-    setRptLoading(true);
-    try {
-      const t = await callAI([{ role:"user", content:`Generate a formal Weekly Water Sustainability Intelligence Report for the University Facilities Director and Sustainability Committee.
-
-Figures to include:
-- Week avg: 13,820 m³/day | Total saved: 21,630 m³ | AED savings: 7,787 AED
-- Carbon offset equivalent: ~21.6 tonnes CO₂
-- 3 anomaly incidents detected and logged
-- SDG 6 compliance status
-
-Sections required:
-1. Executive Summary
-2. Weekly Consumption Overview (with week-on-week comparison)
-3. Anomaly & Leak Detection Summary
-4. AI Predictive Outlook for Next 7 Days
-5. Sustainability Impact (carbon, SDG 6 alignment, water stewardship score)
-6. Financial Impact Analysis (AED savings, projected annual savings)
-7. Recommended Actions for Facilities Management (prioritized)
-8. Conclusion
-
-Use formal report language. Be specific with all numbers.` }]);
-      setRptText(t);
-    } catch { setRptText("⚠️ Report generation failed. Please try again."); }
-    setRptLoading(false);
-  };
-
-  const sendChat = async () => {
-    if (!chatIn.trim() || chatLoad) return;
-    const msg = chatIn.trim(); setChatIn("");
-    const updated = [...msgs, { role:"user", text:msg }];
-    setMsgs(updated); setChatLoad(true);
-    try {
-      const history = updated.slice(1).map(m => ({ role:m.role==="user"?"user":"assistant", content:m.text }));
-      const reply = await callAI(history);
-      setMsgs(prev => [...prev, { role:"assistant", text:reply }]);
-    } catch { setMsgs(prev => [...prev, { role:"assistant", text:"Connection error. Please try again." }]); }
-    setChatLoad(false);
-  };
-
-  const NAV = [
-    { id:"dashboard",     label:"Overview",       icon:"📊" },
-    { id:"zones",         label:"Zones",          icon:"🗺️" },
-    { id:"alerts",        label:"Alerts",         icon:"🚨", badge: ALERTS.filter(a=>a.sev!=='resolved').length },
-    { id:"ai",            label:"AI Insights",    icon:"🤖" },
-    { id:"sustainability",label:"Sustainability", icon:"🌿" },
-    { id:"chat",          label:"AI Chat",        icon:"💬" },
-  ];
-
-  // VIEWS
-  const Dashboard = () => (
-    <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-      <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-        <KPICard label="Today's Consumption" value="18,247" unit="m³" sub="↓ 11.4% vs projected baseline" color={C.green}   icon="💧"/>
-        <KPICard label="Live Flow Rate"       value={live.toFixed(0)} unit="L/min" sub="All zones · updating live" color={C.accent}  icon="⚡"/>
-        <KPICard label="AED Saved Today"      value="847"    unit="AED"   sub="At AED 0.36/m³ tariff"     color={C.yellow}  icon="💰"/>
-        <KPICard label="Active Alerts"        value="3"      unit=""      sub="1 critical · 1 high · 1 med" color={C.red}    icon="🚨"/>
-        <KPICard label="Efficiency Score"     value="78"     unit="/100"  sub="↑ 4 pts from last week"    color={C.purple}  icon="📈"/>
-      </div>
-
-      <Section title="Today's Hourly Water Consumption" sub="Actual vs. Predicted vs. Baseline · m³/hr · All zones combined"
-        action={<div style={{ display:'flex', gap:14, fontSize:11 }}>
-          <span style={{ display:'flex', alignItems:'center' }}><Dot color={C.accent}/>Actual</span>
-          <span style={{ display:'flex', alignItems:'center' }}><Dot color={C.purple}/>Predicted</span>
-          <span style={{ display:'flex', alignItems:'center' }}><Dot color={C.muted}/>Baseline</span>
-        </div>}>
-        <ResponsiveContainer width="100%" height={210}>
-          <AreaChart data={HOURLY} margin={{ top:5, right:8, bottom:0, left:-12 }}>
-            <defs>
-              <linearGradient id="gA" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor={C.accent} stopOpacity={0.35}/>
-                <stop offset="95%" stopColor={C.accent} stopOpacity={0}/>
-              </linearGradient>
-              <linearGradient id="gP" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor={C.purple} stopOpacity={0.2}/>
-                <stop offset="95%" stopColor={C.purple} stopOpacity={0}/>
-              </linearGradient>
-            </defs>
-            <CartesianGrid stroke={C.grid}/>
-            <XAxis dataKey="h" tick={{ fill:C.muted, fontSize:9 }} interval={3}/>
-            <YAxis tick={{ fill:C.muted, fontSize:9 }}/>
-            <Tooltip contentStyle={ttStyle} labelStyle={{ color:C.text }}/>
-            <Area type="monotone" dataKey="baseline"  stroke={C.muted}   fill="none"     strokeDasharray="4 3" strokeWidth={1.5} name="Baseline"/>
-            <Area type="monotone" dataKey="predicted" stroke={C.purple}  fill="url(#gP)" strokeWidth={1.5} name="Predicted"/>
-            <Area type="monotone" dataKey="actual"    stroke={C.accent}  fill="url(#gA)" strokeWidth={2}   name="Actual"/>
-          </AreaChart>
-        </ResponsiveContainer>
-      </Section>
-
-      <div style={{ display:'flex', gap:14, flexWrap:'wrap' }}>
-        {/* Zone List */}
-        <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:18, flex:2, minWidth:280 }}>
-          <div style={{ fontWeight:700, fontSize:13, marginBottom:14 }}>Zone Status Overview</div>
-          <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
-            {ZONES.map(z => (
-              <div key={z.id} onClick={() => { setSelZone(z.id); setTab('zones'); }}
-                style={{ display:'flex', alignItems:'center', gap:9, padding:'7px 9px', borderRadius:8, cursor:'pointer', background:'rgba(255,255,255,0.02)', border:`1px solid ${C.border}` }}>
-                <span style={{ fontSize:15 }}>{z.icon}</span>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:11, fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{z.name}</div>
-                  <div style={{ fontSize:10, color:C.muted, marginTop:1 }}>{z.current} m³/hr</div>
-                </div>
-                <div style={{ width:60, height:5, background:'rgba(255,255,255,0.07)', borderRadius:3, overflow:'hidden', flexShrink:0 }}>
-                  <div style={{ width:`${z.eff}%`, height:'100%', background: z.eff>=90?C.green:z.eff>=70?C.yellow:C.red, borderRadius:3 }}/>
-                </div>
-                <span style={{ fontSize:10, fontWeight:700, color:sColor(z.status), background:z.status==='normal'?C.gAlpha:z.status==='leak'?C.rAlpha:C.yAlpha, padding:'2px 8px', borderRadius:20, minWidth:58, textAlign:'center', flexShrink:0 }}>
-                  {sLabel(z.status)}
-                </span>
+    with left:
+        st.markdown('<div class="nabdcard">', unsafe_allow_html=True)
+        st.markdown(f"<div style='font-weight:700;font-size:13px;margin-bottom:12px'>Zone Status Overview</div>", unsafe_allow_html=True)
+        for z in ZONES:
+            ec = eff_color(z["eff"])
+            delta_p = (z["current"] - z["baseline"]) / z["baseline"] * 100
+            st.markdown(f"""
+            <div style="display:flex;align-items:center;gap:10px;padding:7px 9px;margin-bottom:6px;
+                 border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid #163557">
+              <span style="font-size:16px">{z["icon"]}</span>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:12px;font-weight:600;color:#d8eeff">{z["name"]}</div>
+                <div style="font-size:10px;color:{MUTED};margin-top:1px">{z["current"]} m&sup3;/hr &nbsp;&middot;&nbsp; {z["eff"]}% eff</div>
               </div>
-            ))}
-          </div>
-        </div>
+              <div style="width:70px;flex-shrink:0">
+                <div style="height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden">
+                  <div style="width:{z["eff"]}%;height:100%;background:{ec};border-radius:3px"></div>
+                </div>
+              </div>
+              {status_badge(z["status"])}
+            </div>""", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-        {/* Weekly Bar */}
-        <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:18, flex:1.5, minWidth:200 }}>
-          <div style={{ fontWeight:700, fontSize:13, marginBottom:4 }}>Weekly Usage vs. Savings</div>
-          <div style={{ color:C.muted, fontSize:10, marginBottom:12 }}>m³ · this week</div>
-          <ResponsiveContainer width="100%" height={190}>
-            <BarChart data={WEEKLY} barGap={3} margin={{ top:0, right:0, bottom:0, left:-22 }}>
-              <CartesianGrid stroke={C.grid} vertical={false}/>
-              <XAxis dataKey="d" tick={{ fill:C.muted, fontSize:9 }}/>
-              <YAxis tick={{ fill:C.muted, fontSize:9 }}/>
-              <Tooltip contentStyle={ttStyle}/>
-              <Bar dataKey="usage" fill={C.accent}  fillOpacity={0.6} radius={[3,3,0,0]} name="Usage m³"/>
-              <Bar dataKey="saved" fill={C.green}   fillOpacity={0.8} radius={[3,3,0,0]} name="Saved m³"/>
-            </BarChart>
-          </ResponsiveContainer>
-          <div style={{ display:'flex', gap:12, fontSize:10, marginTop:6 }}>
-            <span style={{ display:'flex', alignItems:'center' }}><Dot color={C.accent}/>Usage</span>
-            <span style={{ display:'flex', alignItems:'center' }}><Dot color={C.green}/>Saved</span>
-          </div>
-        </div>
+    with right:
+        # Weekly bar chart
+        fig_week = go.Figure()
+        fig_week.add_trace(go.Bar(x=WEEKLY["Day"], y=WEEKLY["Usage"], name="Usage m³",
+                                  marker_color=ACCENT, marker_opacity=0.65, marker_line_width=0))
+        fig_week.add_trace(go.Bar(x=WEEKLY["Day"], y=WEEKLY["Saved"], name="Saved m³",
+                                  marker_color=GREEN, marker_opacity=0.85, marker_line_width=0))
+        fig_week.update_layout(**BASE_LAYOUT, barmode="group", height=200)
+        st.markdown('<div class="nabdcard">', unsafe_allow_html=True)
+        st.markdown(f"<div style='font-weight:700;font-size:13px;margin-bottom:4px'>Weekly Usage vs Savings</div>", unsafe_allow_html=True)
+        st.plotly_chart(fig_week, use_container_width=True, config={"displayModeBar": False})
+        st.markdown("</div>", unsafe_allow_html=True)
 
-        {/* Pie */}
-        <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:18, flex:1, minWidth:180 }}>
-          <div style={{ fontWeight:700, fontSize:13, marginBottom:2 }}>Consumption Share</div>
-          <div style={{ color:C.muted, fontSize:10, marginBottom:6 }}>by zone · m³/hr</div>
-          <ResponsiveContainer width="100%" height={160}>
-            <PieChart>
-              <Pie data={PIE_DATA} cx="50%" cy="50%" innerRadius={42} outerRadius={65} paddingAngle={2} dataKey="value">
-                {PIE_DATA.map((e,i) => <Cell key={i} fill={e.fill} fillOpacity={0.85}/>)}
-              </Pie>
-              <Tooltip contentStyle={ttStyle} formatter={v=>[`${v} m³`,'']}/>
-            </PieChart>
-          </ResponsiveContainer>
-          <div style={{ display:'flex', flexWrap:'wrap', gap:'3px 10px', fontSize:10, color:C.muted }}>
-            {ZONES.map(z=><span key={z.id} style={{ display:'flex', alignItems:'center' }}><Dot color={sColor(z.status)}/>{z.short}</span>)}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+        # Pie chart
+        zone_colors = [RED if z["status"]=="leak" else YELLOW if z["status"] in ["anomaly","alert"] else ACCENT for z in ZONES]
+        fig_pie = go.Figure(go.Pie(
+            labels=[z["short"] for z in ZONES],
+            values=[z["current"] for z in ZONES],
+            hole=0.5,
+            marker=dict(colors=zone_colors, line=dict(color="#050d1c", width=2))
+        ))
+        fig_pie.update_layout(**BASE_LAYOUT, height=190,
+            legend=dict(font=dict(size=9), orientation="h", y=-0.15))
+        st.markdown('<div class="nabdcard">', unsafe_allow_html=True)
+        st.markdown(f"<div style='font-weight:700;font-size:13px;margin-bottom:4px'>Consumption by Zone</div>", unsafe_allow_html=True)
+        st.plotly_chart(fig_pie, use_container_width=True, config={"displayModeBar": False})
+        st.markdown("</div>", unsafe_allow_html=True)
 
-  const Zones = () => (
-    <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-      <div style={{ display:'flex', flexWrap:'wrap', gap:12 }}>
-        {ZONES.map(z => {
-          const delta = z.current - z.baseline;
-          const deltaP = ((delta/z.baseline)*100).toFixed(1);
-          const sel = selZone===z.id;
-          return (
-            <div key={z.id} onClick={() => setSelZone(sel?null:z.id)}
-              style={{ background:C.card, border:`1.5px solid ${sel?sColor(z.status):C.border}`, borderRadius:12, padding:18, flex:'1 1 220px', cursor:'pointer', transition:'border-color 0.2s' }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  <span style={{ fontSize:22 }}>{z.icon}</span>
+# ============================================================
+# VIEW: ZONE INTELLIGENCE
+# ============================================================
+elif nav == "🗺️  Zone Intelligence":
+    cols_z = st.columns(2)
+    for i, z in enumerate(ZONES):
+        col = cols_z[i % 2]
+        delta = z["current"] - z["baseline"]
+        delta_p = delta / z["baseline"] * 100
+        ec = eff_color(z["eff"])
+        border = RED if z["status"]=="leak" else (YELLOW if z["status"] in ["anomaly","alert"] else "#163557")
+        with col:
+            st.markdown(f"""
+            <div style="background:#0d1e38;border:1.5px solid {border};border-radius:12px;
+                 padding:18px;margin-bottom:12px">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="font-size:24px">{z["icon"]}</span>
                   <div>
-                    <div style={{ fontWeight:600, fontSize:13 }}>{z.name}</div>
-                    <div style={{ color:C.muted, fontSize:10, marginTop:2 }}>ID: {z.short}</div>
+                    <div style="font-weight:700;font-size:13px;color:#d8eeff">{z["name"]}</div>
+                    <div style="color:{MUTED};font-size:10px;margin-top:2px">Zone ID: {z["short"]}</div>
                   </div>
                 </div>
-                <span style={{ fontSize:10, fontWeight:700, color:sColor(z.status), background:z.status==='normal'?C.gAlpha:z.status==='leak'?C.rAlpha:C.yAlpha, padding:'3px 10px', borderRadius:20 }}>
-                  {sLabel(z.status)}
-                </span>
+                {status_badge(z["status"])}
               </div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:12 }}>
-                <div style={{ background:'rgba(255,255,255,0.03)', borderRadius:8, padding:'8px 10px' }}>
-                  <div style={{ color:C.muted, fontSize:9, textTransform:'uppercase', letterSpacing:0.8 }}>Current</div>
-                  <div style={{ color:C.text, fontWeight:700, fontSize:20, marginTop:2 }}>{z.current}<span style={{ fontSize:10, color:C.muted }}> m³/hr</span></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+                <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:9px 11px">
+                  <div style="color:{MUTED};font-size:9px;text-transform:uppercase;letter-spacing:0.8px">Current</div>
+                  <div style="color:#d8eeff;font-weight:800;font-size:21px;margin-top:3px">
+                    {z["current"]}<span style="font-size:10px;color:{MUTED}"> m&sup3;/hr</span></div>
                 </div>
-                <div style={{ background:'rgba(255,255,255,0.03)', borderRadius:8, padding:'8px 10px' }}>
-                  <div style={{ color:C.muted, fontSize:9, textTransform:'uppercase', letterSpacing:0.8 }}>vs Baseline</div>
-                  <div style={{ color:delta>0?C.red:C.green, fontWeight:700, fontSize:20, marginTop:2 }}>{delta>0?'+':''}{deltaP}<span style={{ fontSize:10 }}>%</span></div>
+                <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:9px 11px">
+                  <div style="color:{MUTED};font-size:9px;text-transform:uppercase;letter-spacing:0.8px">vs Baseline</div>
+                  <div style="color:{'#ff5272' if delta>0 else '#00e5a0'};font-weight:800;font-size:21px;margin-top:3px">
+                    {'+' if delta>0 else ''}{delta_p:.1f}<span style="font-size:10px">%</span></div>
                 </div>
               </div>
               <div>
-                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
-                  <span style={{ color:C.muted, fontSize:10 }}>Efficiency Score</span>
-                  <span style={{ fontSize:11, fontWeight:700, color:z.eff>=90?C.green:z.eff>=70?C.yellow:C.red }}>{z.eff}%</span>
+                <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+                  <span style="color:{MUTED};font-size:10px">Efficiency Score</span>
+                  <span style="font-size:11px;font-weight:700;color:{ec}">{z["eff"]}%</span>
                 </div>
-                <div style={{ height:6, background:'rgba(255,255,255,0.06)', borderRadius:3, overflow:'hidden' }}>
-                  <div style={{ width:`${z.eff}%`, height:'100%', background:z.eff>=90?C.green:z.eff>=70?C.yellow:C.red, borderRadius:3, transition:'width 0.5s' }}/>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-
-  const Alerts = () => (
-    <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-      <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:4 }}>
-        {[['Total Alerts', ALERTS.length, C.muted],['Critical', 1, C.red],['High', 1, C.yellow],['Active', 4, C.accent]].map(([l,v,c]) => (
-          <div key={l} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:10, padding:'12px 18px', display:'flex', gap:10, alignItems:'center' }}>
-            <span style={{ fontSize:22, fontWeight:800, color:c }}>{v}</span>
-            <span style={{ color:C.muted, fontSize:12 }}>{l}</span>
-          </div>
-        ))}
-      </div>
-      {ALERTS.map(a => (
-        <div key={a.id} style={{ background:C.card, border:`1px solid ${a.sev==='critical'?C.red:a.sev==='high'?C.yellow:C.border}`, borderRadius:12, padding:'15px 18px', display:'flex', gap:14, alignItems:'flex-start' }}>
-          <div style={{ fontSize:22, marginTop:1 }}>{{ leak:'💧', anomaly:'⚠️', info:'ℹ️', resolved:'✅' }[a.type]}</div>
-          <div style={{ flex:1 }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:8 }}>
-              <span style={{ fontWeight:700, fontSize:13 }}>{a.zone}</span>
-              <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-                {a.aed>0 && <span style={{ color:C.red, fontSize:11, fontWeight:700 }}>−{a.aed} AED/hr</span>}
-                <span style={{ fontSize:10, fontWeight:700, color:sevClr(a.sev), background:sevBg(a.sev), padding:'2px 10px', borderRadius:20, textTransform:'uppercase' }}>{a.sev}</span>
-              </div>
-            </div>
-            <div style={{ color:C.muted, fontSize:12, marginTop:5, lineHeight:1.5 }}>{a.msg}</div>
-            <div style={{ color:C.muted, fontSize:11, marginTop:6 }}>🕐 {a.time}</div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-
-  const AIView = () => (
-    <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-      <Section title="🤖 AI Water Intelligence Analysis" sub="Powered by NabdFlow AI Engine · Analyzing 8 zones · Live campus data"
-        action={<Btn onClick={runInsights} disabled={aiLoading}>{aiLoading ? '⏳ Analyzing...' : '✨ Generate Insights'}</Btn>}>
-        {!aiText && !aiLoading && (
-          <div style={{ textAlign:'center', padding:'48px 20px', color:C.muted }}>
-            <div style={{ fontSize:48, marginBottom:12 }}>🧠</div>
-            <div style={{ fontSize:14, marginBottom:8 }}>AI Analysis Engine Ready</div>
-            <div style={{ fontSize:12 }}>Click "Generate Insights" to run a full AI analysis on current campus water data including anomaly triage, demand forecasting, and optimization opportunities.</div>
-          </div>
-        )}
-        {aiLoading && (
-          <div style={{ textAlign:'center', padding:'48px 20px', color:C.accent }}>
-            <div style={{ fontSize:36, marginBottom:12 }}>⚙️</div>
-            <div style={{ fontSize:14 }}>Analyzing 8 zones · 24h consumption history · 3 active anomalies · predicting demand...</div>
-          </div>
-        )}
-        {aiText && !aiLoading && (
-          <div style={{ background:'rgba(0,0,0,0.25)', borderRadius:10, padding:'16px 20px', whiteSpace:'pre-wrap', fontSize:12.5, lineHeight:1.75, color:C.text }}>
-            {aiText}
-          </div>
-        )}
-      </Section>
-    </div>
-  );
-
-  const Sustainability = () => (
-    <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-      <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-        <KPICard label="Water Saved This Week" value="21,630" unit="m³"         sub="vs projected baseline"          color={C.accent}  icon="💧"/>
-        <KPICard label="Carbon Offset Equiv."  value="21.6"  unit="t CO₂"       sub="~1,440 trees · 30 days"         color={C.green}   icon="🌿"/>
-        <KPICard label="AED Savings This Week" value="7,787" unit="AED"          sub="Projected annual: ~405K AED"    color={C.yellow}  icon="💰"/>
-        <KPICard label="SDG 6 Alignment"       value="B+"    unit=""             sub="Clean Water & Sanitation"       color={C.purple}  icon="🏆"/>
-        <KPICard label="Sustainability Score"  value="78"    unit="/100"         sub="↑ 6 pts YoY · Target: 90"      color={C.green}   icon="🌍"/>
-      </div>
-
-      <div style={{ display:'flex', gap:14, flexWrap:'wrap' }}>
-        <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:18, flex:1, minWidth:240 }}>
-          <div style={{ fontWeight:700, fontSize:13, marginBottom:14 }}>Weekly AED Savings per Day</div>
-          <ResponsiveContainer width="100%" height={170}>
-            <BarChart data={WEEKLY} margin={{ top:0, right:0, bottom:0, left:-18 }}>
-              <CartesianGrid stroke={C.grid} vertical={false}/>
-              <XAxis dataKey="d" tick={{ fill:C.muted, fontSize:9 }}/>
-              <YAxis tick={{ fill:C.muted, fontSize:9 }}/>
-              <Tooltip contentStyle={ttStyle} formatter={v=>[`${v} AED`,'']}/>
-              <Bar dataKey="aed" fill={C.yellow} fillOpacity={0.8} radius={[4,4,0,0]} name="AED Saved"/>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:18, flex:1, minWidth:240 }}>
-          <div style={{ fontWeight:700, fontSize:13, marginBottom:6 }}>Sustainability Impact Summary</div>
-          <div style={{ display:'flex', flexDirection:'column', gap:10, marginTop:12 }}>
-            {[
-              ['UN SDG 6 – Clean Water', '78%', C.accent],
-              ['UN SDG 13 – Climate Action', '72%', C.green],
-              ['Water Reuse Rate', '34%', C.purple],
-              ['Leak Response Rate', '91%', C.yellow],
-              ['Campus Coverage (Monitored)', '100%', C.green],
-            ].map(([l,v,c]) => (
-              <div key={l}>
-                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-                  <span style={{ fontSize:11, color:C.muted }}>{l}</span>
-                  <span style={{ fontSize:11, fontWeight:700, color:c }}>{v}</span>
-                </div>
-                <div style={{ height:5, background:'rgba(255,255,255,0.05)', borderRadius:3, overflow:'hidden' }}>
-                  <div style={{ width:v, height:'100%', background:c, borderRadius:3 }}/>
+                <div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden">
+                  <div style="width:{z["eff"]}%;height:100%;background:{ec};border-radius:3px"></div>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
+            </div>""", unsafe_allow_html=True)
 
-      <Section title="📋 Weekly Sustainability Intelligence Report" sub="AI-generated for Facilities Management & Sustainability Committee"
-        action={<Btn onClick={runReport} disabled={rptLoading} color="green">{rptLoading ? '⏳ Generating...' : '📄 Generate Report'}</Btn>}>
-        {!rptText && !rptLoading && (
-          <div style={{ textAlign:'center', padding:'48px 20px', color:C.muted }}>
-            <div style={{ fontSize:48, marginBottom:12 }}>📊</div>
-            <div style={{ fontSize:14, marginBottom:8 }}>Formal AI-Drafted Report</div>
-            <div style={{ fontSize:12 }}>Click "Generate Report" to create a complete weekly sustainability report including consumption analysis, anomaly summary, carbon impact, and SDG alignment metrics.</div>
-          </div>
-        )}
-        {rptLoading && (
-          <div style={{ textAlign:'center', padding:'48px 20px', color:C.green }}>
-            <div style={{ fontSize:36, marginBottom:12 }}>📝</div>
-            <div style={{ fontSize:14 }}>Compiling weekly data · Calculating carbon metrics · Drafting formal report...</div>
-          </div>
-        )}
-        {rptText && !rptLoading && (
-          <div style={{ background:'rgba(0,0,0,0.25)', borderRadius:10, padding:'16px 20px', whiteSpace:'pre-wrap', fontSize:12.5, lineHeight:1.8, color:C.text }}>
-            {rptText}
-          </div>
-        )}
-      </Section>
-    </div>
-  );
+# ============================================================
+# VIEW: ANOMALY & ALERTS
+# ============================================================
+elif nav == "🚨  Anomaly & Alerts":
+    a1, a2, a3, a4 = st.columns(4)
+    a1.metric("Total Alerts",  str(len(ALERTS)))
+    a2.metric("Critical 🔴",   "1")
+    a3.metric("High 🟡",       "1")
+    a4.metric("Active",        "4")
+    st.markdown("")
 
-  const Chat = () => (
-    <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:12, padding:20, display:'flex', flexDirection:'column', height:'72vh' }}>
-      <div style={{ marginBottom:14 }}>
-        <div style={{ fontWeight:700, fontSize:14 }}>💬 NabdFlow AI Assistant</div>
-        <div style={{ color:C.muted, fontSize:11, marginTop:3 }}>Ask about leaks, anomalies, savings, predictions, zone data, or sustainability metrics</div>
-      </div>
-
-      <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:12 }}>
-        {["What zones have anomalies?","How much water can I save?","Explain the Admin Block leak","Predict tomorrow's demand"].map(q => (
-          <button key={q} onClick={() => { setChatIn(q); }}
-            style={{ background:C.aAlpha, border:`1px solid rgba(0,200,255,0.2)`, color:C.accent, borderRadius:20, padding:'4px 12px', fontSize:11, cursor:'pointer' }}>
-            {q}
-          </button>
-        ))}
-      </div>
-
-      <div ref={chatRef} style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column', gap:10, marginBottom:14, paddingRight:4 }}>
-        {msgs.map((m,i) => (
-          <div key={i} style={{ display:'flex', justifyContent:m.role==='user'?'flex-end':'flex-start' }}>
-            <div style={{
-              background: m.role==='user' ? C.aAlpha : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${m.role==='user' ? 'rgba(0,200,255,0.25)' : C.border}`,
-              borderRadius: m.role==='user' ? '12px 12px 2px 12px' : '2px 12px 12px 12px',
-              padding:'10px 14px', maxWidth:'82%', fontSize:12.5, lineHeight:1.65, color:C.text, whiteSpace:'pre-wrap'
-            }}>
-              {m.role==='assistant' && <span style={{ color:C.accent, fontWeight:700, fontSize:10, display:'block', marginBottom:5 }}>🤖 NabdFlow AI</span>}
-              {m.text}
+    TYPE_ICONS = {"leak":"💧","anomaly":"⚠️","info":"ℹ️","resolved":"✅"}
+    for a in ALERTS:
+        border = sev_color(a["sev"])
+        aed_html = (f'<span style="color:{RED};font-size:11px;font-weight:700">-{a["aed"]} AED/hr</span>'
+                    if a["aed"] > 0 else "")
+        st.markdown(f"""
+        <div style="background:#0d1e38;border:1px solid {border};border-left:4px solid {border};
+             border-radius:12px;padding:15px 18px;margin-bottom:10px">
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <span style="font-size:22px;margin-top:1px">{TYPE_ICONS.get(a["type"],"ℹ️")}</span>
+            <div style="flex:1">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                <span style="font-weight:700;font-size:13px;color:#d8eeff">{a["zone"]}</span>
+                <div style="display:flex;gap:8px;align-items:center">
+                  {aed_html}
+                  <span style="font-size:10px;font-weight:700;color:{sev_color(a['sev'])};
+                        background:{sev_bg(a['sev'])};padding:2px 10px;border-radius:20px;
+                        text-transform:uppercase">{a["sev"]}</span>
+                </div>
+              </div>
+              <div style="color:{MUTED};font-size:12px;margin-top:5px;line-height:1.5">{a["msg"]}</div>
+              <div style="color:{MUTED};font-size:11px;margin-top:6px">&#128336; {a["time"]}</div>
             </div>
           </div>
-        ))}
-        {chatLoad && (
-          <div style={{ display:'flex', justifyContent:'flex-start' }}>
-            <div style={{ background:'rgba(255,255,255,0.04)', border:`1px solid ${C.border}`, borderRadius:'2px 12px 12px 12px', padding:'10px 16px', color:C.muted, fontSize:12 }}>
-              ⏳ Thinking...
-            </div>
-          </div>
-        )}
-      </div>
+        </div>""", unsafe_allow_html=True)
 
-      <div style={{ display:'flex', gap:10 }}>
-        <input value={chatIn} onChange={e=>setChatIn(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendChat()}
-          placeholder="Ask about leaks, savings, predictions, zones..."
-          style={{ flex:1, background:'rgba(255,255,255,0.04)', border:`1px solid ${C.border}`, borderRadius:8, padding:'10px 14px', color:C.text, fontSize:13, outline:'none' }}/>
-        <Btn onClick={sendChat} disabled={chatLoad}>Send</Btn>
-      </div>
-    </div>
-  );
+# ============================================================
+# VIEW: AI INSIGHTS ENGINE
+# ============================================================
+elif nav == "🤖  AI Insights Engine":
+    section_header("🤖 AI Water Intelligence Analysis",
+                   "Powered by NabdFlow AI Engine · Real-time campus data analysis")
 
-  const activeCount = ALERTS.filter(a=>a.sev!=='resolved').length;
+    if st.button("✨ Generate AI Insights", type="primary"):
+        st.session_state["insights"] = ""
+        with st.spinner("Analyzing 8 zones · 24h data · 3 active anomalies..."):
+            prompt = """Analyze today's campus water data and provide a structured AI report:
 
-  // SHELL
-  return (
-    <div style={{ background:C.bg, color:C.text, fontFamily:"system-ui,-apple-system,sans-serif", minHeight:'100vh', display:'flex', fontSize:14 }}>
-      {/* SIDEBAR */}
-      <div style={{ width:210, background:C.surface, borderRight:`1px solid ${C.border}`, display:'flex', flexDirection:'column', flexShrink:0, position:'sticky', top:0, height:'100vh', overflowY:'auto' }}>
-        {/* Logo */}
-        <div style={{ padding:'18px 16px', borderBottom:`1px solid ${C.border}` }}>
-          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-            <div style={{ width:36, height:36, borderRadius:10, background:`linear-gradient(135deg,${C.accent},#0055ff)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>💧</div>
-            <div>
-              <div style={{ fontWeight:900, fontSize:16, letterSpacing:0.5 }}>NabdFlow</div>
-              <div style={{ color:C.muted, fontSize:9, letterSpacing:1.5, textTransform:'uppercase' }}>Water Intelligence</div>
-            </div>
-          </div>
-          <div style={{ marginTop:10, fontSize:10, color:C.muted, letterSpacing:0.5 }}>نبض المياه الذكي · UAE Campus</div>
-        </div>
+## Key Findings
+3 most critical observations with specific figures.
 
-        {/* Live Badge */}
-        <div style={{ padding:'10px 16px', background:'rgba(0,229,160,0.05)', borderBottom:`1px solid ${C.border}` }}>
-          <div style={{ display:'flex', alignItems:'center', gap:7 }}>
-            <span style={{ display:'inline-block', width:7, height:7, borderRadius:'50%', background:C.green, boxShadow:`0 0 8px ${C.green}` }}/>
-            <span style={{ fontSize:11, color:C.green, fontWeight:700 }}>LIVE</span>
-            <span style={{ fontSize:11, color:C.muted }}>{live.toFixed(1)} L/min</span>
-          </div>
-        </div>
+## Priority Actions Required
+Ranked by urgency. Include estimated resolution time and responsible team.
 
-        {/* Nav */}
-        <nav style={{ padding:'10px 8px', flex:1 }}>
-          {NAV.map(n => (
-            <div key={n.id} onClick={() => setTab(n.id)}
-              style={{ display:'flex', alignItems:'center', gap:9, padding:'9px 11px', borderRadius:8, marginBottom:2, cursor:'pointer',
-                background: tab===n.id ? C.aAlpha : 'transparent',
-                borderLeft: `3px solid ${tab===n.id ? C.accent : 'transparent'}`,
-                color: tab===n.id ? C.accent : C.muted,
-                fontWeight: tab===n.id ? 600 : 400, transition:'all 0.15s' }}>
-              <span style={{ fontSize:15 }}>{n.icon}</span>
-              <span style={{ fontSize:12 }}>{n.label}</span>
-              {n.badge && <span style={{ marginLeft:'auto', background:C.red, color:'#fff', fontSize:9, fontWeight:800, borderRadius:20, padding:'1px 6px' }}>{n.badge}</span>}
-            </div>
-          ))}
-        </nav>
+## 24-Hour Demand Forecast
+Expected demand pattern, peak risk windows, recommended pre-actions.
 
-        {/* Summary */}
-        <div style={{ padding:'14px 16px', borderTop:`1px solid ${C.border}` }}>
-          <div style={{ color:C.muted, fontSize:9, letterSpacing:1.2, textTransform:'uppercase', marginBottom:9 }}>Campus Status</div>
-          {[['Monitored Zones','8',C.text],['Active Anomalies','3',C.red],['Eff. Score','78/100',C.green],['Saved Today','847 AED',C.yellow]].map(([l,v,c]) => (
-            <div key={l} style={{ display:'flex', justifyContent:'space-between', fontSize:11, marginBottom:5 }}>
-              <span style={{ color:C.muted }}>{l}</span>
-              <span style={{ fontWeight:700, color:c }}>{v}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+## Quick-Win Optimizations
+3 specific actions. Each with estimated m3 and AED savings.
 
-      {/* MAIN */}
-      <div style={{ flex:1, overflowY:'auto', padding:22 }}>
-        {/* Header */}
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20, flexWrap:'wrap', gap:10 }}>
-          <div>
-            <h1 style={{ margin:0, fontWeight:800, fontSize:18 }}>
-              {{ dashboard:'📊 Overview Dashboard', zones:'🗺️ Zone Intelligence', alerts:'🚨 Anomaly & Alert Center', ai:'🤖 AI Insights Engine', sustainability:'🌿 Sustainability Hub', chat:'💬 AI Chat Assistant' }[tab]}
-            </h1>
-            <div style={{ color:C.muted, fontSize:11, marginTop:4 }}>
-              University Campus · NabdFlow AI · {new Date().toLocaleDateString('en-AE',{ weekday:'long', year:'numeric', month:'long', day:'numeric' })}
-            </div>
-          </div>
-          <div style={{ display:'flex', gap:8 }}>
-            {activeCount>0 && tab!=='alerts' && (
-              <button onClick={()=>setTab('alerts')}
-                style={{ background:C.rAlpha, border:`1px solid ${C.red}`, color:C.red, borderRadius:8, padding:'7px 14px', fontSize:11, fontWeight:700, cursor:'pointer' }}>
-                🚨 {activeCount} Alerts
-              </button>
-            )}
-            <button onClick={runInsights}
-              style={{ background:C.aAlpha, border:`1px solid ${C.accent}`, color:C.accent, borderRadius:8, padding:'7px 14px', fontSize:11, fontWeight:700, cursor:'pointer' }}>
-              ✨ AI Analysis
-            </button>
-          </div>
-        </div>
+## Efficiency Score Breakdown
+What drives the 78/100 score and a concrete roadmap to reach 90+."""
+            st.session_state["insights"] = call_claude([{"role":"user","content":prompt}])
 
-        {tab==='dashboard'      && <Dashboard/>}
-        {tab==='zones'          && <Zones/>}
-        {tab==='alerts'         && <Alerts/>}
-        {tab==='ai'             && <AIView/>}
-        {tab==='sustainability' && <Sustainability/>}
-        {tab==='chat'           && <Chat/>}
-      </div>
-    </div>
-  );
-}
+    if st.session_state["insights"]:
+        st.markdown(f'<div style="background:rgba(0,0,0,0.2);border:1px solid #163557;border-radius:10px;padding:20px">', unsafe_allow_html=True)
+        st.markdown(st.session_state["insights"])
+        st.markdown("</div>", unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+        <div style="text-align:center;padding:60px 20px;color:{MUTED}">
+          <div style="font-size:52px;margin-bottom:14px">&#129504;</div>
+          <div style="font-size:15px;margin-bottom:8px;color:#d8eeff">AI Analysis Engine Ready</div>
+          <div style="font-size:12px">Click "Generate AI Insights" to run a full analysis on current<br>campus water data — anomaly triage, demand forecasting, and optimizations.</div>
+        </div>""", unsafe_allow_html=True)
+
+# ============================================================
+# VIEW: SUSTAINABILITY HUB
+# ============================================================
+elif nav == "🌿  Sustainability Hub":
+    s1,s2,s3,s4,s5 = st.columns(5)
+    s1.metric("💧 Water Saved / Week", "21,630 m³",  "vs baseline")
+    s2.metric("🌿 Carbon Offset",      "21.6 t CO₂", "~1,440 trees")
+    s3.metric("💰 AED Savings / Week", "7,787 AED",  "Proj. ~405K/yr")
+    s4.metric("🏆 SDG 6 Score",        "B+",         "Clean Water")
+    s5.metric("🌍 Sustainability",      "78 / 100",   "↑ 6 pts YoY")
+
+    st.markdown("")
+    ca, cb = st.columns(2)
+
+    with ca:
+        fig_aed = go.Figure(go.Bar(
+            x=WEEKLY["Day"], y=WEEKLY["AED"], name="AED Saved",
+            marker_color=YELLOW, marker_opacity=0.85, marker_line_width=0,
+        ))
+        fig_aed.update_layout(**BASE_LAYOUT, height=230)
+        st.markdown('<div class="nabdcard">', unsafe_allow_html=True)
+        st.markdown(f"<div style='font-weight:700;font-size:13px;margin-bottom:4px'>AED Savings per Day This Week</div>", unsafe_allow_html=True)
+        st.plotly_chart(fig_aed, use_container_width=True, config={"displayModeBar": False})
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with cb:
+        st.markdown('<div class="nabdcard">', unsafe_allow_html=True)
+        st.markdown(f"<div style='font-weight:700;font-size:13px;margin-bottom:14px'>Sustainability Impact Metrics</div>", unsafe_allow_html=True)
+        for label, val, color in [
+            ("UN SDG 6 — Clean Water",      78,  ACCENT),
+            ("UN SDG 13 — Climate Action",  72,  GREEN),
+            ("Water Reuse Rate",            34,  PURPLE),
+            ("Leak Response Rate",          91,  YELLOW),
+            ("Campus Coverage (Monitored)", 100, GREEN),
+        ]:
+            st.markdown(f"""
+            <div style="margin-bottom:10px">
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                <span style="font-size:11px;color:{MUTED}">{label}</span>
+                <span style="font-size:11px;font-weight:700;color:{color}">{val}%</span>
+              </div>
+              <div style="height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden">
+                <div style="width:{val}%;height:100%;background:{color};border-radius:3px"></div>
+              </div>
+            </div>""", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("")
+    section_header("📋 Weekly Sustainability Intelligence Report",
+                   "AI-generated for Facilities Management & Sustainability Committee")
+
+    if st.button("📄 Generate Sustainability Report", type="primary"):
+        st.session_state["report"] = ""
+        with st.spinner("Compiling weekly data · Calculating carbon metrics · Drafting report..."):
+            prompt = """Generate a formal Weekly Water Sustainability Intelligence Report for the University Facilities Director and Sustainability Committee.
+
+Sections to include:
+1. Executive Summary (3-4 sentences)
+2. Weekly Consumption Overview (avg 13,820 m3/day, total saved: 21,630 m3, week-on-week comparison)
+3. Anomaly and Leak Detection Summary (3 incidents this week, AED impact)
+4. AI Predictive Outlook for Next 7 Days
+5. Sustainability Impact (carbon equiv: 21.6 tonnes CO2, SDG 6 alignment, water stewardship rating)
+6. Financial Impact Analysis (7,787 AED saved this week, projected annual savings ~405,000 AED)
+7. Recommended Actions for Facilities Management (prioritized, with owner and deadline)
+8. Conclusion
+
+Use formal report language. Be specific with all numbers and percentages."""
+            st.session_state["report"] = call_claude([{"role":"user","content":prompt}])
+
+    if st.session_state["report"]:
+        st.markdown('<div style="background:rgba(0,0,0,0.2);border:1px solid #163557;border-radius:10px;padding:20px">', unsafe_allow_html=True)
+        st.markdown(st.session_state["report"])
+        st.markdown("</div>", unsafe_allow_html=True)
+
+# ============================================================
+# VIEW: AI CHAT ASSISTANT
+# ============================================================
+elif nav == "💬  AI Chat Assistant":
+    section_header("💬 NabdFlow AI Chat",
+                   "Ask about leaks, anomalies, savings, predictions, zone data, or sustainability metrics")
+
+    # Quick prompt buttons
+    quick_prompts = ["What zones have anomalies?", "How much water can I save?",
+                     "Explain the Admin Block leak", "Predict tomorrow's demand"]
+    qc = st.columns(len(quick_prompts))
+    for i, qp in enumerate(quick_prompts):
+        if qc[i].button(qp, key=f"qp_{i}"):
+            st.session_state["chat"].append({"role":"user","content":qp})
+            with st.spinner("Thinking..."):
+                history = [{"role":m["role"],"content":m["content"]} for m in st.session_state["chat"]]
+                reply = call_claude(history)
+            st.session_state["chat"].append({"role":"assistant","content":reply})
+            st.rerun()
+
+    st.markdown("")
+
+    # Chat history
+    for m in st.session_state["chat"]:
+        with st.chat_message(m["role"], avatar="🤖" if m["role"]=="assistant" else "👤"):
+            st.markdown(m["content"])
+
+    # Chat input
+    if user_input := st.chat_input("Ask about campus water systems..."):
+        st.session_state["chat"].append({"role":"user","content":user_input})
+        with st.chat_message("user", avatar="👤"):
+            st.markdown(user_input)
+        with st.chat_message("assistant", avatar="🤖"):
+            with st.spinner("Thinking..."):
+                history = [{"role":m["role"],"content":m["content"]} for m in st.session_state["chat"]]
+                reply = call_claude(history)
+            st.markdown(reply)
+        st.session_state["chat"].append({"role":"assistant","content":reply})
+        st.rerun()
