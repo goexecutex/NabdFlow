@@ -1,926 +1,1211 @@
-# ============================================================
-#  NabdFlow - AI-Powered Campus Water Intelligence Dashboard
-#  Majra Sustainable Impact Challenge | Student Innovation Project
-#  pip install streamlit plotly pandas numpy groq
-#  Secrets: GROQ_API_KEY = "gsk_..." in .streamlit/secrets.toml
-# ============================================================
+# ╔══════════════════════════════════════════════════════════════════════════════╗
+# ║  NabdFlow — Campus Water Intelligence Platform                              ║
+# ║  Prototype v1.0 · Simulated UAE Campus Data · Pre-Pilot Stage              ║
+# ╚══════════════════════════════════════════════════════════════════════════════╝
+#
+# Requirements:
+#   pip install streamlit pandas numpy plotly
+#
+# Run:
+#   streamlit run app.py
 
 import streamlit as st
-import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
-import random
-import io
+import plotly.express as px
+import plotly.graph_objects as go
 from datetime import datetime, timedelta
 
-# ------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────
 # PAGE CONFIG
-# ------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────
+
 st.set_page_config(
     page_title="NabdFlow | Campus Water Intelligence",
     page_icon="💧",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
-# ------------------------------------------------------------
-# CSS
-# ------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────
+# GLOBAL CSS — Dark Navy / Cyan Theme
+# ──────────────────────────────────────────────────────────────────────────────
+
 st.markdown("""
 <style>
-  .stApp { background-color: #050d1c; color: #d8eeff; }
-  section[data-testid="stSidebar"] { background-color: #081525 !important; border-right: 1px solid #163557; }
-  .block-container { padding-top: 1.5rem; padding-bottom: 1rem; }
-  div[data-testid="metric-container"] {
-      background: #0d1e38; border: 1px solid #163557; border-radius: 12px; padding: 14px 16px !important;
-  }
-  [data-testid="stMetricLabel"]  { color: #5a8aaa !important; font-size: 10px !important; text-transform: uppercase; letter-spacing: 1px; }
-  [data-testid="stMetricValue"]  { color: #d8eeff !important; font-size: 20px !important; font-weight: 800 !important; }
-  [data-testid="stMetricDelta"]  { font-size: 10px !important; }
-  .stButton > button { background: linear-gradient(135deg,#00c8ff,#0055ff) !important; color:#04111f !important; font-weight:700 !important; border:none !important; border-radius:8px !important; }
-  .stButton > button:hover { opacity: 0.85; }
-  h1,h2,h3 { color: #d8eeff !important; }
-  hr { border-color: #163557; }
-  .nabdcard { background:#0d1e38; border:1px solid #163557; border-radius:12px; padding:16px 18px; margin-bottom:12px; }
-  .stTabs [data-baseweb="tab-list"] { background:#081525; border-radius:10px; }
-  .stTabs [data-baseweb="tab"] { color:#5a8aaa; }
-  .stTabs [aria-selected="true"] { color:#00c8ff !important; }
-  .stTextInput input, .stNumberInput input { background: #0d1e38 !important; color: #d8eeff !important; border: 1px solid #163557 !important; }
-  div[data-testid="stFileUploader"] { background:#0d1e38; border:1px dashed #163557; border-radius:10px; padding:10px; }
+/* ── Base ─────────────────────────────────────────────── */
+.stApp { background-color: #060d1a; color: #dce8f5; }
+[data-testid="stSidebar"] {
+    background-color: #0a1220;
+    border-right: 1px solid #162844;
+}
+[data-testid="stSidebar"] .stRadio > label { color: #7a9bbf !important; font-size: 0.8rem; }
+[data-testid="stSidebar"] .stRadio [data-testid="stMarkdownContainer"] p { color: #dce8f5; }
+
+/* ── Typography ───────────────────────────────────────── */
+h1, h2, h3 { color: #00d4ff !important; }
+.page-title {
+    font-size: 1.7rem; font-weight: 700; color: #dce8f5;
+    line-height: 1.3; margin-bottom: 2px;
+}
+.page-sub {
+    font-size: 0.84rem; color: #5a7a9a; margin-bottom: 18px;
+}
+
+/* ── Metric Card ──────────────────────────────────────── */
+.kpi-card {
+    background: linear-gradient(145deg, #0c1e38, #091628);
+    border: 1px solid #162844;
+    border-radius: 14px;
+    padding: 18px 14px;
+    text-align: center;
+}
+.kpi-value  { font-size: 1.85rem; font-weight: 700; color: #00d4ff; }
+.kpi-unit   { font-size: 0.85rem; color: #4a6a8a; }
+.kpi-label  {
+    font-size: 0.72rem; color: #4a6a8a;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    margin-top: 5px;
+}
+
+/* ── Section Header ───────────────────────────────────── */
+.sec-header {
+    font-size: 1rem; font-weight: 600; color: #00d4ff;
+    border-bottom: 1px solid #162844;
+    padding-bottom: 6px; margin: 20px 0 12px;
+}
+
+/* ── Disclaimer ───────────────────────────────────────── */
+.disclaimer {
+    background: #091628;
+    border-left: 3px solid #00d4ff;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 0.8rem; color: #7a9bbf;
+    margin: 0 0 18px;
+    line-height: 1.55;
+}
+
+/* ── Zone Row ─────────────────────────────────────────── */
+.zone-row {
+    background: #0c1e38;
+    border: 1px solid #162844;
+    border-radius: 10px;
+    padding: 13px 18px;
+    margin: 5px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+/* ── Alert cards ──────────────────────────────────────── */
+.alert-leak    { background:#1c0808; border-left:4px solid #ff4040; border-radius:10px; padding:14px 18px; margin:7px 0; }
+.alert-anomaly { background:#1c1008; border-left:4px solid #f87171; border-radius:10px; padding:14px 18px; margin:7px 0; }
+.alert-warning { background:#1a1608; border-left:4px solid #fbbf24; border-radius:10px; padding:14px 18px; margin:7px 0; }
+
+/* ── Insight card ─────────────────────────────────────── */
+.insight-high   { background:#180606; border-left:4px solid #ff4040; border-radius:10px; padding:15px 18px; margin:9px 0; }
+.insight-medium { background:#181206; border-left:4px solid #fbbf24; border-radius:10px; padding:15px 18px; margin:9px 0; }
+.insight-low    { background:#06101a; border-left:4px solid #00d4ff; border-radius:10px; padding:15px 18px; margin:9px 0; }
+
+/* ── Chat ─────────────────────────────────────────────── */
+.chat-user {
+    background:#0c2040; border:1px solid #1e4a7a;
+    border-radius:14px 14px 4px 14px;
+    padding:10px 15px; max-width:76%;
+    font-size:0.88rem; color:#dce8f5;
+    margin-left:auto; margin-bottom:8px;
+}
+.chat-bot {
+    background:#091628; border:1px solid #162844;
+    border-radius:4px 14px 14px 14px;
+    padding:12px 15px; max-width:82%;
+    font-size:0.86rem; color:#b0c8e0; line-height:1.65;
+    margin-bottom:8px;
+}
+
+/* ── Misc ─────────────────────────────────────────────── */
+#MainMenu {visibility:hidden;} footer {visibility:hidden;}
+.note-xs { font-size: 0.7rem; color: #3a5a7a; margin-top: 3px; }
+.stTextInput input { background:#091628 !important; color:#dce8f5 !important; border:1px solid #162844 !important; }
+.stSelectbox [data-baseweb="select"] { background:#091628 !important; }
+.stForm { border: none !important; }
+div[data-testid="stFormSubmitButton"] button {
+    background: #00d4ff !important; color: #060d1a !important;
+    font-weight: 700 !important; border-radius: 8px !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
-# ------------------------------------------------------------
-# COLORS
-# ------------------------------------------------------------
-BG     = "#0d1e38"
-GRID   = "rgba(255,255,255,0.04)"
-MUTED  = "#5a8aaa"
-ACCENT = "#00c8ff"
-GREEN  = "#00e5a0"
-YELLOW = "#ffb347"
-RED    = "#ff5272"
-PURPLE = "#a78bfa"
 
-# ------------------------------------------------------------
-# DEMO DATA  —  Realistic UAE campus-scale simulated figures
-# Total daily campus usage: ~1,000–1,100 m³/day (8 zones)
-# Potential waste identified: ~60–75 m³/day
-# ------------------------------------------------------------
-DEMO_ZONES = [
-    {"id":1,"name":"Main Academic Building","short":"MAB","icon":"🏛️","baseline":125,"current":117,"status":"normal", "eff":94},
-    {"id":2,"name":"Science & Tech Block",  "short":"STB","icon":"🔬","baseline":100,"current":128,"status":"anomaly","eff":65},
-    {"id":3,"name":"Student Housing A",     "short":"SHA","icon":"🏘️","baseline":210,"current":204,"status":"normal", "eff":97},
-    {"id":4,"name":"Student Housing B",     "short":"SHB","icon":"🏠","baseline":185,"current":218,"status":"alert",  "eff":72},
-    {"id":5,"name":"Sports Complex",        "short":"SPC","icon":"⚽","baseline":155,"current":149,"status":"normal", "eff":96},
-    {"id":6,"name":"Library & Research",    "short":"LIB","icon":"📚","baseline":55, "current":52, "status":"normal", "eff":98},
-    {"id":7,"name":"Cafeteria & Dining",    "short":"CAF","icon":"🍽️","baseline":130,"current":140,"status":"normal", "eff":89},
-    {"id":8,"name":"Admin & Offices",       "short":"ADM","icon":"💼","baseline":50, "current":74, "status":"leak",   "eff":58},
+# ──────────────────────────────────────────────────────────────────────────────
+# CONSTANTS
+# ──────────────────────────────────────────────────────────────────────────────
+
+ZONES = [
+    "Main Academic Building",
+    "Science & Technology Block",
+    "Student Housing A",
+    "Student Housing B",
+    "Sports Complex",
+    "Library & Research Area",
+    "Cafeteria & Dining",
+    "Administration & Offices",
 ]
 
-DEMO_ALERTS = [
-    {"type":"leak",    "zone":"Admin & Offices",      "msg":"Possible pipe leak &mdash; abnormal flow detected outside business hours",         "time":"12m ago","aed":8.6, "sev":"critical"},
-    {"type":"anomaly", "zone":"Student Housing B",    "msg":"Consumption 18% above 7-day baseline for 3 consecutive hours",                      "time":"47m ago","aed":11.9,"sev":"high"},
-    {"type":"anomaly", "zone":"Science & Tech Block", "msg":"Lab cooling water elevated &mdash; possible valve not fully closed",                 "time":"1.5h ago","aed":10.1,"sev":"medium"},
-    {"type":"info",    "zone":"Cafeteria & Dining",   "msg":"Usage slightly above baseline &mdash; likely catering event in progress",            "time":"3h ago", "aed":3.6, "sev":"low"},
-    {"type":"resolved","zone":"Sports Complex",       "msg":"Irrigation usage returned to normal baseline &mdash; no action required",            "time":"5h ago", "aed":0,   "sev":"resolved"},
-]
+WATER_TARIFF_AED = 12.5   # AED per m³ (indicative UAE municipal rate)
+CO2_FACTOR       = 0.30   # kg CO₂-eq per m³ (UAE desalination energy estimate, indicative)
 
-DEMO_WEEKLY = pd.DataFrame({
-    "Day":   ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
-    "Usage": [1082, 1055, 1128, 1008, 882, 641, 584],
-    "Saved": [72,   55,   85,   42,   35,  20,  15],
-    "AED":   [26,   20,   31,   15,   13,   7,   6],
-})
 
-np.random.seed(42)
-_b = [20 + np.sin(i/3.5)*5 + (22 if 7<=i<=19 else 0) for i in range(24)]
-DEMO_HOURLY = pd.DataFrame({
-    "Hour":      [f"{str(i).zfill(2)}:00" for i in range(24)],
-    "Actual":    [max(0, round(v + np.random.normal(0,2),1)) for v in _b],
-    "Predicted": [round(v*1.06,1) for v in _b],
-    "Baseline":  [round(v*1.18,1) for v in _b],
-})
+# ──────────────────────────────────────────────────────────────────────────────
+# SIMULATED DATA GENERATOR
+# ──────────────────────────────────────────────────────────────────────────────
 
-# ------------------------------------------------------------
-# CHART HELPERS
-# ------------------------------------------------------------
-BASE_LAYOUT = dict(
-    paper_bgcolor=BG, plot_bgcolor=BG,
-    font=dict(color=MUTED, size=11),
-    margin=dict(l=40,r=10,t=10,b=30),
-    xaxis=dict(gridcolor=GRID,showgrid=True,zeroline=False),
-    yaxis=dict(gridcolor=GRID,showgrid=True,zeroline=False),
-)
-L_DEFAULT = dict(bgcolor="rgba(0,0,0,0)", font=dict(size=10))
-L_TOP     = dict(bgcolor="rgba(0,0,0,0)", font=dict(size=10), orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-L_BOTTOM  = dict(bgcolor="rgba(0,0,0,0)", font=dict(size=9), orientation="h", y=-0.15)
+@st.cache_data(show_spinner=False)
+def generate_simulated_data() -> pd.DataFrame:
+    """
+    Generate 30 days of daily simulated UAE university campus water data.
+    Anomalies are deliberately injected for demonstration purposes.
+    """
+    np.random.seed(42)
+    base_date = datetime(2025, 3, 1)
 
-# ------------------------------------------------------------
-# SESSION STATE
-# ------------------------------------------------------------
-DEFAULTS = {
-    "config": {
-        "university": "UAE Campus Simulation \u2013 NabdFlow Pilot Model",
-        "campus":     "Smart Water Campus Pilot \u2013 Simulated Dataset",
-        "tariff":     0.36,
-        "currency":   "AED",
-        "contact":    "",
-        "logo_url":   "",
-    },
-    "raw_df":None,"zones_data":None,"hourly_data":None,
-    "weekly_data":None,"alerts_data":None,
-    "chat":[{"role":"assistant","content":"Hello! I am NabdFlow AI. I can help analyse the simulated campus water data, explain detected anomalies, and suggest what the facilities team should investigate first."}],
-    "insights":"","report":"",
-}
-for k,v in DEFAULTS.items():
-    if k not in st.session_state:
-        st.session_state[k] = v
+    zone_profiles = {
+        "Main Academic Building":    {"b": 85,  "noise": 0.10, "ah_risk": 0.03},
+        "Science & Technology Block":{"b": 55,  "noise": 0.09, "ah_risk": 0.02},
+        "Student Housing A":         {"b": 120, "noise": 0.07, "ah_risk": 0.01},
+        "Student Housing B":         {"b": 115, "noise": 0.08, "ah_risk": 0.01},
+        "Sports Complex":            {"b": 70,  "noise": 0.13, "ah_risk": 0.04},
+        "Library & Research Area":   {"b": 30,  "noise": 0.09, "ah_risk": 0.02},
+        "Cafeteria & Dining":        {"b": 95,  "noise": 0.11, "ah_risk": 0.05},
+        "Administration & Offices":  {"b": 40,  "noise": 0.09, "ah_risk": 0.03},
+    }
 
-# ------------------------------------------------------------
-# DATA ACCESSORS
-# ------------------------------------------------------------
-def using_real_data(): return st.session_state["zones_data"] is not None
-def get_zones():    return st.session_state["zones_data"]   if using_real_data() else DEMO_ZONES
-def get_hourly_df():return st.session_state["hourly_data"]  if using_real_data() else DEMO_HOURLY
-def get_weekly_df():return st.session_state["weekly_data"]  if using_real_data() else DEMO_WEEKLY
-def get_alerts():   return st.session_state["alerts_data"]  if using_real_data() else DEMO_ALERTS
-def get_cfg(k):     return st.session_state["config"].get(k,"")
-def currency():     return st.session_state["config"]["currency"]
-def tariff():       return st.session_state["config"]["tariff"]
+    records = []
+    for day in range(30):
+        date = base_date + timedelta(days=day)
+        is_weekend = date.weekday() >= 4  # Fri–Sat in UAE
 
-# ------------------------------------------------------------
-# CSV PROCESSING
-# ------------------------------------------------------------
-def process_csv(df):
+        for zone, p in zone_profiles.items():
+            baseline = p["b"]
+            if is_weekend:
+                baseline *= 0.4 if "Housing" not in zone else 0.88
+
+            mult = 1.0
+            inject_leak = False
+
+            # Inject deliberate anomalies for prototype demonstration
+            if zone == "Cafeteria & Dining"        and day in [7, 8, 22, 23]:      mult = 1.62
+            if zone == "Sports Complex"            and day in [14, 15, 16]:        mult = 1.47
+            if zone == "Science & Technology Block" and day >= 20:
+                mult = 1.36
+                inject_leak = day >= 25
+            if zone == "Student Housing B"         and day in [10, 11, 12]:        mult = 1.27
+
+            actual = max(0, baseline * mult * (1 + np.random.normal(0, p["noise"])))
+
+            records.append({
+                "Zone":                zone,
+                "Date":                date.strftime("%Y-%m-%d"),
+                "Actual_Consumption":  round(actual, 2),
+                "Baseline_Consumption":round(baseline, 2),
+                "Is_Weekend":          is_weekend,
+                "_inject_leak":        inject_leak,
+            })
+
+    df = pd.DataFrame(records)
+    df = _add_derived_columns(df)
+    return df
+
+
+def _add_derived_columns(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    df.columns = [c.strip().lower().replace(" ","_") for c in df.columns]
-    df["timestamp"] = pd.to_datetime(df["timestamp"], dayfirst=True, errors="coerce")
-    df = df.dropna(subset=["timestamp"])
-    df["hour"] = df["timestamp"].dt.hour
-    df["date"] = df["timestamp"].dt.date
-    zones_out = []
-    for i, zn in enumerate(df["zone"].unique()):
-        zdf = df[df["zone"]==zn].sort_values("timestamp")
-        current  = float(zdf["consumption_m3"].iloc[-1])
-        baseline = float(zdf["baseline_m3"].mean())
-        eff = min(100, max(0, int(baseline/max(current,0.001)*100)))
-        ratio = current/max(baseline,0.001)
-        status = "leak" if ratio>1.40 else ("anomaly" if ratio>1.20 else ("alert" if ratio>1.10 else "normal"))
-        zones_out.append({"id":i+1,"name":zn,"short":zn[:3].upper(),"icon":"🏛️",
-                          "baseline":int(baseline),"current":int(current),"status":status,"eff":eff})
-    hgrp = df.groupby("hour").agg(actual=("consumption_m3","sum"),baseline=("baseline_m3","sum")).reset_index()
-    def hval(h,col,mult=1): return round(float(hgrp[hgrp["hour"]==h][col].sum())*mult,1) if h in hgrp["hour"].values else 0
-    hourly_out = pd.DataFrame({
-        "Hour":      [f"{str(h).zfill(2)}:00" for h in range(24)],
-        "Actual":    [hval(h,"actual") for h in range(24)],
-        "Predicted": [hval(h,"baseline",1.05) for h in range(24)],
-        "Baseline":  [hval(h,"baseline") for h in range(24)],
-    })
-    wgrp = df.groupby("date").agg(Usage=("consumption_m3","sum"),baseline=("baseline_m3","sum")).reset_index()
-    wgrp["Saved"] = (wgrp["baseline"]-wgrp["Usage"]).clip(lower=0)
-    wgrp["AED"]   = (wgrp["Saved"]*tariff()).round(2)
-    wgrp["Day"]   = pd.to_datetime(wgrp["date"]).dt.strftime("%a")
-    weekly_out    = wgrp[["Day","Usage","Saved","AED"]].tail(7)
-    alerts_out = []
-    for z in zones_out:
-        if z["status"] in ["leak","anomaly","alert"]:
-            excess  = max(0, z["current"]-z["baseline"])
-            aed_day = round(excess*tariff(), 2)
-            pct     = round((z["current"]-z["baseline"])/max(z["baseline"],1)*100)
-            sev     = "critical" if z["status"]=="leak" else ("high" if z["status"]=="anomaly" else "medium")
-            alerts_out.append({"type":z["status"],"zone":z["name"],
-                "msg":f"Consumption {pct}% above baseline &mdash; potential abnormal usage detected",
-                "time":"Just now","aed":aed_day,"sev":sev})
-    if not alerts_out:
-        alerts_out.append({"type":"resolved","zone":"All Zones",
-            "msg":"No anomalies detected &mdash; all zones within normal baseline range","time":"Now","aed":0,"sev":"resolved"})
-    return zones_out, hourly_out, weekly_out, alerts_out
+    df["Deviation_Pct"] = (
+        (df["Actual_Consumption"] - df["Baseline_Consumption"])
+        / df["Baseline_Consumption"] * 100
+    ).round(1)
 
-# ------------------------------------------------------------
-# SAMPLE CSV
-# ------------------------------------------------------------
-def make_sample_csv():
-    zones = ["Main Academic Building","Science Block","Student Housing A",
-             "Student Housing B","Sports Complex","Admin & Offices"]
-    baselines = [125,100,210,185,155,50]
-    rows = []
-    base_dt = datetime(2026,5,20,0,0)
-    for h in range(24):
-        ts = base_dt + timedelta(hours=h)
-        for z,bl in zip(zones,baselines):
-            spike = 1.48 if (z=="Admin & Offices" and h>18) else 1.0
-            cons  = round(bl/24*(1+random.uniform(-0.05,0.08))*spike, 2)
-            rows.append({"zone":z,"timestamp":ts.strftime("%Y-%m-%d %H:%M"),"consumption_m3":cons,"baseline_m3":round(bl/24,2)})
-    return pd.DataFrame(rows)
+    def _status(row):
+        if row.get("_inject_leak", False):
+            return "Potential Leak"
+        dev = row["Deviation_Pct"]
+        if dev > 40:  return "Anomaly"
+        if dev > 15:  return "Warning"
+        return "Normal"
 
-# ------------------------------------------------------------
-# GROQ AI
-# ------------------------------------------------------------
-def build_system():
-    zones = get_zones()
-    cfg   = st.session_state["config"]
-    return (
-        f"You are NabdFlow AI, an assistant for a student-led campus water intelligence prototype.\n"
-        f"IMPORTANT: This is a working prototype using simulated UAE campus water data, not real verified figures.\n"
-        f"Project: {cfg['university']} | {cfg['campus']}\n"
-        f"Zones monitored: {len(zones)}\n"
-        + "\n".join([f"- {z['name']}: {z['current']} m3/day (baseline {z['baseline']} m3/day), efficiency {z['eff']}%, status: {z['status']}" for z in zones])
-        + f"\nWater tariff used in simulation: {cfg['tariff']} {cfg['currency']}/m3\n"
-        "When giving recommendations, frame them as 'potential actions to investigate' not confirmed savings.\n"
-        "Use language like 'estimated', 'potential', 'prototype-tested', 'simulated data suggests'.\n"
-        "Be helpful, concise, and practical for a university facilities manager."
+    df["Status"] = df.apply(_status, axis=1)
+    df["Avoidable_Waste_m3"] = df.apply(
+        lambda r: max(0, r["Actual_Consumption"] - r["Baseline_Consumption"] * 1.10)
+        if r["Status"] != "Normal" else 0, axis=1
+    ).round(2)
+    df["Avoidable_Cost_AED"] = (df["Avoidable_Waste_m3"] * WATER_TARIFF_AED).round(2)
+    return df
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# HELPER RENDERERS
+# ──────────────────────────────────────────────────────────────────────────────
+
+STATUS_COLORS = {
+    "Normal":         ("#4ade80", "#1a4a2e"),
+    "Warning":        ("#fbbf24", "#4a3a0a"),
+    "Anomaly":        ("#f87171", "#4a1a0a"),
+    "Potential Leak": ("#ff4040", "#5a0808"),
+}
+
+
+def badge(status: str) -> str:
+    fg, bg = STATUS_COLORS.get(status, ("#ffffff", "#222"))
+    return (f'<span style="background:{bg};color:{fg};padding:3px 11px;'
+            f'border-radius:20px;font-size:0.78rem;font-weight:600">{status}</span>')
+
+
+def kpi(label: str, value, unit: str = "") -> str:
+    return f"""
+    <div class="kpi-card">
+        <div class="kpi-label">{label}</div>
+        <div class="kpi-value">{value}<span class="kpi-unit"> {unit}</span></div>
+    </div>"""
+
+
+def disc(text: str):
+    st.markdown(f'<div class="disclaimer">ℹ️ {text}</div>', unsafe_allow_html=True)
+
+
+def chart_layout(fig, title="", height=340):
+    fig.update_layout(
+        title=title, height=height,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(9,22,40,0.7)",
+        font=dict(color="#8aaac8", size=11),
+        title_font=dict(color="#00d4ff", size=13),
+        legend=dict(bgcolor="rgba(0,0,0,0)", font_color="#8aaac8"),
+        xaxis=dict(gridcolor="#162844", linecolor="#162844", tickfont_color="#5a7a9a"),
+        yaxis=dict(gridcolor="#162844", linecolor="#162844", tickfont_color="#5a7a9a"),
+        margin=dict(l=40, r=20, t=46, b=36),
+    )
+    return fig
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# SESSION STATE
+# ──────────────────────────────────────────────────────────────────────────────
+
+if "uploaded_data" not in st.session_state:
+    st.session_state.uploaded_data = None
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# ACTIVE DATASET
+# ──────────────────────────────────────────────────────────────────────────────
+
+df = (st.session_state.uploaded_data
+      if st.session_state.uploaded_data is not None
+      else generate_simulated_data())
+
+# Zone-level aggregate (full 30-day window)
+zone_agg = df.groupby("Zone").agg(
+    Total_Actual     =("Actual_Consumption",  "sum"),
+    Total_Baseline   =("Baseline_Consumption","sum"),
+    Avg_Deviation    =("Deviation_Pct",        "mean"),
+    Total_Waste      =("Avoidable_Waste_m3",   "sum"),
+    Total_Cost       =("Avoidable_Cost_AED",   "sum"),
+    Last_Status      =("Status",               "last"),
+).reset_index()
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# SIDEBAR
+# ──────────────────────────────────────────────────────────────────────────────
+
+with st.sidebar:
+    st.markdown("""
+    <div style="text-align:center;padding:22px 0 10px">
+        <div style="font-size:2rem">💧</div>
+        <div style="font-size:1.45rem;font-weight:700;color:#00d4ff;letter-spacing:0.04em">NabdFlow</div>
+        <div style="font-size:0.72rem;color:#4a6a8a;margin-top:3px">Campus Water Intelligence</div>
+    </div>
+    <hr style="border-color:#162844;margin:8px 0 16px">
+    """, unsafe_allow_html=True)
+
+    page = st.radio(
+        "nav",
+        [
+            "🏠  Campus Overview",
+            "🗺️  Zone Intelligence",
+            "🚨  Alert Center",
+            "🤖  AI Insights Engine",
+            "🌿  Sustainability Hub",
+            "🧪  Pilot Validation",
+            "📂  Data Upload",
+            "💬  AI Chat Assistant",
+        ],
+        label_visibility="collapsed",
     )
 
-def call_ai(messages):
-    try:
-        from groq import Groq
-        key = st.secrets.get("GROQ_API_KEY","")
-        if not key:
-            return "**No API key.** Add `GROQ_API_KEY = 'gsk_...'` to `.streamlit/secrets.toml`"
-        client = Groq(api_key=key)
-        resp = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role":"system","content":build_system()}]+messages,
-            max_tokens=1000
-        )
-        return resp.choices[0].message.content
-    except ImportError:
-        return "**groq not installed.** Run: `pip install groq`"
-    except Exception as e:
-        return f"**Error:** {e}"
+    st.markdown("<hr style='border-color:#162844;margin:14px 0 10px'>", unsafe_allow_html=True)
+    data_label = "Uploaded CSV" if st.session_state.uploaded_data is not None else "Simulated UAE Campus Data"
+    st.markdown(f"""
+    <div style="font-size:0.7rem;color:#3a5a7a;line-height:1.9;padding:4px 0">
+        <b style="color:#5a7a9a">Data Source:</b> {data_label}<br>
+        <b style="color:#5a7a9a">Version:</b> Prototype v1.0<br>
+        <b style="color:#5a7a9a">Stage:</b> Pre-Pilot Validation<br>
+        <b style="color:#5a7a9a">Campus:</b> UAE University Campus
+    </div>
+    """, unsafe_allow_html=True)
 
-# ------------------------------------------------------------
-# REUSABLE UI COMPONENTS
-# ------------------------------------------------------------
-def status_badge(s):
-    cfg = {"normal":("#00e5a0","rgba(0,229,160,0.12)","Normal"),
-           "anomaly":("#ffb347","rgba(255,179,71,0.12)","Anomaly"),
-           "alert":("#ffb347","rgba(255,179,71,0.12)","Alert"),
-           "leak":("#ff5272","rgba(255,82,114,0.12)","Possible Leak"),
-           "resolved":("#5a8aaa","rgba(90,138,170,0.08)","Resolved")}
-    c,bg,lbl = cfg.get(s,(MUTED,"transparent",s.capitalize()))
-    return f'<span style="background:{bg};color:{c};padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700">{lbl}</span>'
 
-def eff_color(e): return GREEN if e>=90 else (YELLOW if e>=70 else RED)
-def sev_color(s): return {"critical":RED,"high":YELLOW,"medium":YELLOW,"low":ACCENT,"resolved":MUTED}.get(s,MUTED)
-def sev_bg(s):    return {"critical":"rgba(255,82,114,0.12)","high":"rgba(255,179,71,0.12)","medium":"rgba(255,179,71,0.10)","low":"rgba(0,200,255,0.10)","resolved":"rgba(90,138,170,0.08)"}.get(s,"transparent")
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE 1 — CAMPUS OVERVIEW
+# ══════════════════════════════════════════════════════════════════════════════
 
-def prototype_badge():
-    st.markdown(
-        f'<div style="background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.35);'
-        f'border-radius:10px;padding:10px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px">'
-        f'<span style="font-size:16px">&#9432;</span>'
-        f'<div><span style="color:{PURPLE};font-weight:700;font-size:12px">PROTOTYPE MODE</span>'
-        f'<span style="color:{MUTED};font-size:11px;margin-left:8px">This dashboard uses simulated UAE campus water data. '
-        f'Figures show <strong style="color:#d8eeff">potential water waste identified</strong> and '
-        f'<strong style="color:#d8eeff">estimated avoidable cost</strong>, not verified real-world savings. '
-        f'Real impact will be validated during a campus pilot using actual meter data.</span></div>'
-        f'</div>', unsafe_allow_html=True)
+if "Campus Overview" in page:
+    st.markdown('<div class="page-title">Campus Overview Dashboard</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-sub">UAE University Campus · 30-Day Simulation Window · Prototype Demonstration</div>', unsafe_allow_html=True)
+    disc("Current results are prototype demonstration outputs based on simulated UAE campus water data. "
+         "Real-world savings will only be claimed after pilot validation using actual campus meter data.")
 
-def render_alert(a):
-    icons = {"leak":"💧","anomaly":"⚠️","info":"ℹ️","resolved":"✅"}
-    bdr   = sev_color(a["sev"])
-    aed_h = (f'<span style="color:{RED};font-size:11px;font-weight:700">~{a["aed"]} {currency()}/day est.</span>') if a["aed"]>0 else ""
-    st.markdown(
-        f'<div style="background:#0d1e38;border:1px solid {bdr};border-left:4px solid {bdr};'
-        f'border-radius:12px;padding:15px 18px;margin-bottom:10px">'
-        f'<div style="display:flex;gap:12px;align-items:flex-start">'
-        f'<span style="font-size:20px">{icons.get(a["type"],"i")}</span>'
-        f'<div style="flex:1">'
-        f'<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px">'
-        f'<span style="font-weight:700;font-size:13px;color:#d8eeff">{a["zone"]}</span>'
-        f'<div style="display:flex;gap:8px;align-items:center">{aed_h}'
-        f'<span style="font-size:10px;font-weight:700;color:{sev_color(a["sev"])};background:{sev_bg(a["sev"])};'
-        f'padding:2px 10px;border-radius:20px;text-transform:uppercase">{a["sev"]}</span>'
-        f'</div></div>'
-        f'<div style="color:{MUTED};font-size:12px;margin-top:6px">{a["msg"]}</div>'
-        f'<div style="color:{MUTED};font-size:11px;margin-top:6px">&#128336; {a["time"]}</div>'
-        f'</div></div></div>', unsafe_allow_html=True)
+    total_actual  = df["Actual_Consumption"].sum()
+    total_waste   = df["Avoidable_Waste_m3"].sum()
+    total_cost    = df["Avoidable_Cost_AED"].sum()
+    active_alerts = zone_agg[zone_agg["Last_Status"] != "Normal"].shape[0]
+    eff_score     = max(0, min(100, round(100 - (total_waste / total_actual * 100), 1)))
 
-# ------------------------------------------------------------
-# SIDEBAR
-# ------------------------------------------------------------
-cfg = st.session_state["config"]
-with st.sidebar:
-    st.markdown(
-        f'<div style="display:flex;align-items:center;gap:10px;padding:4px 0 10px">'
-        f'<div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#00c8ff,#0055ff);'
-        f'display:flex;align-items:center;justify-content:center;font-size:20px">💧</div>'
-        f'<div><div style="font-weight:900;font-size:15px;color:#d8eeff">NabdFlow</div>'
-        f'<div style="color:{MUTED};font-size:9px;letter-spacing:1px;text-transform:uppercase">Water Intelligence</div>'
-        f'</div></div>'
-        f'<div style="background:#0d1e38;border:1px solid #163557;border-radius:8px;padding:8px 12px;margin-bottom:6px">'
-        f'<div style="color:#d8eeff;font-size:11px;font-weight:700">UAE Campus Simulation</div>'
-        f'<div style="color:{MUTED};font-size:9px;margin-top:2px">NabdFlow Pilot Model &middot; Simulated Data</div>'
-        f'</div>', unsafe_allow_html=True)
+    c1, c2, c3, c4, c5 = st.columns(5)
+    with c1: st.markdown(kpi("Total Consumption",       f"{total_actual/1000:.1f}", "k m³"),  unsafe_allow_html=True)
+    with c2: st.markdown(kpi("Water Efficiency Score",  f"{eff_score}",            "/ 100"), unsafe_allow_html=True)
+    with c3: st.markdown(kpi("Alert Zones",             f"{active_alerts}",        "zones"),  unsafe_allow_html=True)
+    with c4: st.markdown(kpi("Est. Avoidable Waste",    f"{total_waste:.0f}",      "m³ *"),   unsafe_allow_html=True)
+    with c5: st.markdown(kpi("Est. Avoidable Cost",     f"{total_cost:,.0f}",      "AED *"),  unsafe_allow_html=True)
 
-    data_label = (f'<div style="background:rgba(0,229,160,0.08);border:1px solid rgba(0,229,160,0.3);border-radius:8px;padding:6px 10px;margin-bottom:10px;font-size:11px;color:#00e5a0;font-weight:700">&#9679; REAL DATA &nbsp;&middot;&nbsp; <span style="font-weight:400;color:{MUTED}">{len(get_zones())} zones</span></div>'
-                  if using_real_data() else
-                  f'<div style="background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.3);border-radius:8px;padding:6px 10px;margin-bottom:10px;font-size:11px;color:{PURPLE};font-weight:700">&#9670; SIMULATED DATA &nbsp;&middot;&nbsp; <span style="font-weight:400;color:{MUTED}">Prototype Mode</span></div>')
-    st.markdown(data_label, unsafe_allow_html=True)
-    st.markdown(f'<div style="background:rgba(0,229,160,0.05);border:1px solid rgba(0,229,160,0.15);border-radius:8px;padding:6px 12px;margin-bottom:14px"><span style="color:#00e5a0;font-size:11px;font-weight:700">&#9679; LIVE &nbsp;</span><span style="color:{MUTED};font-size:11px">{random.randint(38,48)} L/min (simulated)</span></div>', unsafe_allow_html=True)
+    st.markdown('<div class="note-xs">* Estimated figures based on simulated data. Require pilot validation before formal reporting.</div>', unsafe_allow_html=True)
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
 
-    nav = st.radio("nav", [
-        "📊  Overview Dashboard",
-        "📋  Project Evidence & Journey",
-        "🗺️  Zone Intelligence",
-        "🚨  Anomaly & Alerts",
-        "🤖  AI Insights Engine",
-        "🌿  Sustainability Hub",
-        "💬  AI Chat Assistant",
-        "⚙️  Setup & Data",
-    ], label_visibility="collapsed")
+    # ── Trend + Donut
+    col_l, col_r = st.columns([2.1, 1])
 
-    st.markdown(f'<hr style="border-color:#163557;margin:10px 0">', unsafe_allow_html=True)
-    c1,c2 = st.columns(2)
-    zones_now = get_zones()
-    total_c   = sum(z["current"] for z in zones_now)
-    total_b   = sum(z["baseline"] for z in zones_now)
-    waste_est = max(0, total_c - total_b)
-    c1.metric("Zones",        str(len(zones_now)))
-    c1.metric("Eff. Score",   "78/100")
-    c2.metric("Alerts",       str(len([a for a in get_alerts() if a["sev"]!="resolved"])))
-    c2.metric("Est. Waste/Day", f"~{waste_est} m\u00b3")
+    with col_l:
+        daily = df.groupby("Date").agg(Actual=("Actual_Consumption","sum"),
+                                        Baseline=("Baseline_Consumption","sum")).reset_index()
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=daily["Date"], y=daily["Baseline"],
+                                  name="Expected Baseline",
+                                  line=dict(color="#2a5a8a", dash="dash", width=1.8)))
+        fig.add_trace(go.Scatter(x=daily["Date"], y=daily["Actual"],
+                                  name="Actual Consumption",
+                                  line=dict(color="#00d4ff", width=2.5),
+                                  fill="tonexty", fillcolor="rgba(0,212,255,0.07)"))
+        fig = chart_layout(fig, "Campus-Wide Daily Water Consumption vs Baseline (m³)", 300)
+        st.plotly_chart(fig, use_container_width=True)
 
-# ------------------------------------------------------------
-# HEADER
-# ------------------------------------------------------------
-TITLES = {
-    "📊  Overview Dashboard":         "📊 Overview Dashboard",
-    "📋  Project Evidence & Journey":  "📋 Project Evidence & Journey",
-    "🗺️  Zone Intelligence":           "🗺️ Zone Intelligence",
-    "🚨  Anomaly & Alerts":            "🚨 Anomaly & Alert Centre",
-    "🤖  AI Insights Engine":          "🤖 AI Insights Engine",
-    "🌿  Sustainability Hub":           "🌿 Sustainability Hub",
-    "💬  AI Chat Assistant":           "💬 AI Chat Assistant",
-    "⚙️  Setup & Data":               "⚙️ Setup & Data",
-}
-hc1,hc2 = st.columns([4,1])
-with hc1:
-    st.markdown(f'<h1 style="margin:0;font-size:21px;font-weight:900">{TITLES.get(nav,nav)}</h1>', unsafe_allow_html=True)
-    st.markdown(f'<div style="color:{MUTED};font-size:11px;margin-top:2px">UAE Campus Simulation &middot; NabdFlow AI Prototype &middot; {datetime.now().strftime("%A, %d %B %Y")}</div>', unsafe_allow_html=True)
-with hc2:
-    if st.button("✨ AI Analysis"):
-        st.session_state["insights"] = ""
-st.markdown(f'<div style="border-bottom:1px solid #163557;margin:10px 0 16px"></div>', unsafe_allow_html=True)
+    with col_r:
+        sc = df.groupby("Status").size().reset_index(name="Count")
+        cmap = {"Normal":"#4ade80","Warning":"#fbbf24","Anomaly":"#f87171","Potential Leak":"#ff4040"}
+        fig2 = px.pie(sc, values="Count", names="Status", color="Status",
+                      color_discrete_map=cmap, hole=0.52)
+        fig2.update_traces(textposition="inside", textinfo="percent+label",
+                           textfont_size=10, pull=[0.03]*len(sc))
+        fig2 = chart_layout(fig2, "Status Distribution", 300)
+        st.plotly_chart(fig2, use_container_width=True)
 
-# ============================================================
-# VIEW: OVERVIEW DASHBOARD
-# ============================================================
-if nav == "📊  Overview Dashboard":
-
-    # ── PROJECT BANNER ────────────────────────────────────
-    st.markdown(
-        f'<div style="background:linear-gradient(135deg,rgba(0,85,255,0.15),rgba(0,200,255,0.10));'
-        f'border:1px solid rgba(0,200,255,0.3);border-radius:12px;padding:16px 20px;margin-bottom:16px">'
-        f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'
-        f'<span style="font-size:18px">🌱</span>'
-        f'<span style="color:{ACCENT};font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:1px">Project Status: Ongoing Student-Led Sustainability Innovation</span>'
-        f'</div>'
-        f'<div style="color:#c8e6ff;font-size:12px;line-height:1.7">'
-        f'NabdFlow began as an inter-university smart water management research and awareness project focused on '
-        f'<strong>AI and Big Data for climate action in the UAE</strong>. It has now been developed into a working AI '
-        f'dashboard prototype for UAE campus water efficiency. This prototype uses <strong>simulated campus water data</strong> '
-        f'to demonstrate how real campuses can identify abnormal water usage, potential leaks, and sustainability improvement opportunities.'
-        f'</div></div>', unsafe_allow_html=True)
-
-    # ── PROTOTYPE MODE BADGE ──────────────────────────────
-    prototype_badge()
-
-    # ── FOR REVIEWERS BOX ─────────────────────────────────
-    st.markdown(
-        f'<div style="background:rgba(0,229,160,0.05);border:1px solid rgba(0,229,160,0.25);'
-        f'border-radius:10px;padding:12px 16px;margin-bottom:16px">'
-        f'<span style="color:{GREEN};font-weight:700;font-size:12px">&#128203; For Reviewers &nbsp;</span>'
-        f'<span style="color:{MUTED};font-size:11px">NabdFlow is submitted as an ongoing student-led sustainability '
-        f'innovation project. The working prototype demonstrates the technical and impact model using simulated UAE '
-        f'campus water data. The next stage is real campus pilot validation with actual facilities meter data.</span>'
-        f'</div>', unsafe_allow_html=True)
-
-    # ── KPIs ─────────────────────────────────────────────
-    zones_d  = get_zones()
-    total_c  = sum(z["current"]  for z in zones_d)
-    total_b  = sum(z["baseline"] for z in zones_d)
-    waste_d  = max(0, total_c - total_b)
-    cost_d   = round(waste_d * tariff(), 1)
-    n_alerts = len([a for a in get_alerts() if a["sev"] not in ["resolved","low"]])
-
-    k1,k2,k3,k4,k5 = st.columns(5)
-    k1.metric("💧 Today's Campus Usage",        f"~{total_c} m\u00b3/day",  "Simulated total")
-    k2.metric("⚡ Simulated Flow Rate",          f"{random.randint(38,48)} L/min", "All zones")
-    k3.metric("🔍 Est. Avoidable Cost/Day",      f"~{cost_d} {currency()}",   "Prototype estimate")
-    k4.metric("⚠️ Potential Alerts Detected",    str(n_alerts),               "Anomalies flagged")
-    k5.metric("📈 Water Efficiency Score",        "78 / 100",                  "Campus-wide (simulated)")
-
-    st.markdown("")
-
-    # ── HOURLY CHART ─────────────────────────────────────
-    hourly = get_hourly_df()
-    fig_h  = go.Figure()
-    fig_h.add_trace(go.Scatter(x=hourly["Hour"],y=hourly["Baseline"], name="Baseline",  line=dict(color=MUTED,dash="dot",width=1.5)))
-    fig_h.add_trace(go.Scatter(x=hourly["Hour"],y=hourly["Predicted"],name="Predicted", line=dict(color=PURPLE,width=1.5), fill="tozeroy",fillcolor="rgba(167,139,250,0.05)"))
-    fig_h.add_trace(go.Scatter(x=hourly["Hour"],y=hourly["Actual"],   name="Actual",    line=dict(color=ACCENT,width=2.5), fill="tozeroy",fillcolor="rgba(0,200,255,0.08)"))
-    fig_h.update_layout(**BASE_LAYOUT, height=230, legend=L_TOP)
-    st.markdown('<div class="nabdcard">', unsafe_allow_html=True)
-    st.markdown(f'<div style="font-weight:700;font-size:13px">Hourly Campus Water Consumption (Simulated)</div>', unsafe_allow_html=True)
-    st.markdown(f'<div style="color:{MUTED};font-size:11px;margin-bottom:6px">Actual vs Predicted vs Baseline &middot; m\u00b3/hr &middot; All zones combined &middot; Simulated data</div>', unsafe_allow_html=True)
-    st.plotly_chart(fig_h, use_container_width=True, config={"displayModeBar":False})
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    st.markdown("")
-    left, right = st.columns([2,1])
-
-    with left:
-        st.markdown('<div class="nabdcard">', unsafe_allow_html=True)
-        st.markdown(f'<div style="font-weight:700;font-size:13px;margin-bottom:6px">Zone-by-Zone Status &mdash; Where is water being used?</div>', unsafe_allow_html=True)
-        st.markdown(f'<div style="color:{MUTED};font-size:10px;margin-bottom:10px">Zones highlighted in red/yellow show abnormal usage patterns that need investigation</div>', unsafe_allow_html=True)
-        for z in zones_d:
-            ec = eff_color(z["eff"])
-            delta = z["current"] - z["baseline"]
-            delta_label = f'+{delta}' if delta > 0 else str(delta)
-            st.markdown(
-                f'<div style="display:flex;align-items:center;gap:10px;padding:7px 9px;margin-bottom:6px;'
-                f'border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid #163557">'
-                f'<span style="font-size:16px">{z["icon"]}</span>'
-                f'<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:#d8eeff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{z["name"]}</div>'
-                f'<div style="font-size:10px;color:{MUTED}">{z["current"]} m\u00b3/day &middot; Baseline: {z["baseline"]} m\u00b3 &middot; Diff: <span style="color:{"#ff5272" if delta>0 else "#00e5a0"}">{delta_label} m\u00b3</span></div></div>'
-                f'<div style="width:65px"><div style="height:5px;background:rgba(255,255,255,0.07);border-radius:3px">'
-                f'<div style="width:{z["eff"]}%;height:100%;background:{ec};border-radius:3px"></div></div></div>'
-                f'{status_badge(z["status"])}</div>', unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    with right:
-        weekly = get_weekly_df()
-        fig_w  = go.Figure()
-        fig_w.add_trace(go.Bar(x=weekly["Day"],y=weekly["Usage"],name="Usage m3", marker_color=ACCENT,marker_opacity=0.65,marker_line_width=0))
-        fig_w.add_trace(go.Bar(x=weekly["Day"],y=weekly["Saved"],name="Est. Waste Identified m3", marker_color=YELLOW,marker_opacity=0.85,marker_line_width=0))
-        fig_w.update_layout(**BASE_LAYOUT,barmode="group",height=200,legend=L_DEFAULT)
-        st.markdown('<div class="nabdcard">', unsafe_allow_html=True)
-        st.markdown(f'<div style="font-weight:700;font-size:13px;margin-bottom:2px">Weekly Usage vs Potential Waste</div>', unsafe_allow_html=True)
-        st.markdown(f'<div style="color:{MUTED};font-size:10px;margin-bottom:4px">m\u00b3 &middot; Simulated estimates</div>', unsafe_allow_html=True)
-        st.plotly_chart(fig_w, use_container_width=True, config={"displayModeBar":False})
-        st.markdown("</div>", unsafe_allow_html=True)
-
-        zcolors = [RED if z["status"]=="leak" else YELLOW if z["status"] in ["anomaly","alert"] else ACCENT for z in zones_d]
-        fig_p = go.Figure(go.Pie(labels=[z["short"] for z in zones_d],values=[z["current"] for z in zones_d],
-            hole=0.5,marker=dict(colors=zcolors,line=dict(color="#050d1c",width=2))))
-        fig_p.update_layout(**BASE_LAYOUT,height=190,showlegend=True,legend=L_BOTTOM)
-        st.markdown('<div class="nabdcard">', unsafe_allow_html=True)
-        st.markdown(f'<div style="font-weight:700;font-size:13px;margin-bottom:2px">Share by Zone (Simulated)</div>', unsafe_allow_html=True)
-        st.plotly_chart(fig_p, use_container_width=True, config={"displayModeBar":False})
-        st.markdown("</div>", unsafe_allow_html=True)
-
-# ============================================================
-# VIEW: PROJECT EVIDENCE & JOURNEY
-# ============================================================
-elif nav == "📋  Project Evidence & Journey":
-
-    # For Reviewers box
-    st.markdown(
-        f'<div style="background:rgba(0,200,255,0.07);border:2px solid rgba(0,200,255,0.4);'
-        f'border-radius:12px;padding:16px 20px;margin-bottom:20px">'
-        f'<div style="color:{ACCENT};font-weight:800;font-size:13px;margin-bottom:6px">&#128203; For Reviewers — Majra Sustainable Impact Challenge</div>'
-        f'<div style="color:#c8e6ff;font-size:12px;line-height:1.7">'
-        f'NabdFlow is submitted as an <strong>ongoing student-led sustainability innovation project</strong>. '
-        f'The working prototype demonstrates the technical and impact model using simulated UAE campus water data. '
-        f'The next stage is <strong>real campus pilot validation</strong> with actual facilities meter data. '
-        f'All numbers shown in this prototype are estimates based on realistic UAE campus water use patterns &mdash; '
-        f'they are not verified real-world savings.'
-        f'</div></div>', unsafe_allow_html=True)
-
-    tab_origin, tab_exec, tab_evidence, tab_impact, tab_next = st.tabs([
-        "🌱 Project Origin", "⚙️ Current Execution", "📂 Evidence", "📊 Impact Status", "🚀 Next Steps"
-    ])
-
-    with tab_origin:
-        st.markdown('<div class="nabdcard">', unsafe_allow_html=True)
-        st.markdown(f'<div style="font-weight:700;font-size:15px;color:#d8eeff;margin-bottom:12px">🌱 How NabdFlow Started</div>', unsafe_allow_html=True)
+    # ── Zone summary
+    st.markdown('<div class="sec-header">Zone-Level Summary</div>', unsafe_allow_html=True)
+    for _, row in zone_agg.sort_values("Avg_Deviation", ascending=False).iterrows():
+        dv_color = ("#4ade80" if row["Avg_Deviation"] <= 10
+                    else "#fbbf24" if row["Avg_Deviation"] <= 25
+                    else "#f87171")
         st.markdown(f"""
-<div style="color:#c8e6ff;font-size:13px;line-height:1.8">
-NabdFlow started from an <strong>inter-university sustainability poster and research project</strong> on
-<em>AI and Big Data for Smart Water Management in the UAE</em>. The original project explored how
-sensors, cloud data, AI models, and smart dashboards could help reduce water waste and support climate action.
-<br><br>
-The research highlighted critical UAE water challenges:
-<ul style="margin-top:8px;line-height:2">
-  <li>The UAE relies on <strong>desalination for ~89% of its water supply</strong> (MoCCAE, 2025)</li>
-  <li>Abu Dhabi and Dubai consume <strong>~78% of total UAE water</strong> (FCSC, 2024)</li>
-  <li>Smart water technologies in Dubai reduced water loss to <strong>4.6%</strong> (DEWA, 2024)</li>
-  <li>AI systems can potentially reduce campus water waste by <strong>up to 40%</strong> (Gholami et al., 2022)</li>
-  <li>UAE Water Security Strategy 2036 requires a <strong>20% reduction</strong> in per-capita demand</li>
-</ul>
-<br>
-These findings showed that university campuses &mdash; with multiple zones, 24/7 usage, and
-no real-time monitoring &mdash; are an ideal starting point for smart water intelligence.
-</div>
+        <div class="zone-row">
+            <div style="min-width:210px">
+                <div style="font-weight:600;color:#dce8f5">{row['Zone']}</div>
+                <div style="font-size:0.76rem;color:#4a6a8a;margin-top:2px">
+                    {row['Total_Actual']:.0f} m³ consumed (30 days)
+                </div>
+            </div>
+            <div style="text-align:center">
+                <div style="font-size:0.7rem;color:#4a6a8a">Avg Deviation</div>
+                <div style="font-weight:700;color:{dv_color}">{row['Avg_Deviation']:+.1f}%</div>
+            </div>
+            <div style="text-align:center">
+                <div style="font-size:0.7rem;color:#4a6a8a">Est. Avoidable Waste</div>
+                <div style="font-weight:700;color:#00d4ff">{row['Total_Waste']:.1f} m³ *</div>
+            </div>
+            <div>{badge(row['Last_Status'])}</div>
+        </div>
         """, unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
 
-    with tab_exec:
-        st.markdown('<div class="nabdcard">', unsafe_allow_html=True)
-        st.markdown(f'<div style="font-weight:700;font-size:15px;color:#d8eeff;margin-bottom:12px">⚙️ What Has Been Built</div>', unsafe_allow_html=True)
-        st.markdown(f"""
-<div style="color:#c8e6ff;font-size:13px;line-height:1.8">
-The research concept has been developed into a <strong>working AI dashboard prototype</strong>.
-The app currently demonstrates:
-</div>
-        """, unsafe_allow_html=True)
-        features = [
-            ("📊","Zone-level water monitoring","Tracks simulated consumption per building vs baseline"),
-            ("🚨","Anomaly detection","Flags zones with abnormal usage (18–49% above baseline in demo)"),
-            ("🤖","AI Insights Engine","Groq AI (llama-3.3-70b) analyses usage and suggests investigation priorities"),
-            ("🌿","Sustainability reporting","Estimates desalination-related emissions impact and SDG 6 alignment"),
-            ("💬","AI Chat Assistant","Facilities managers can ask natural language questions about water data"),
-            ("📁","CSV Data Upload","Accepts real campus meter data — ready for pilot validation"),
-            ("📋","Prototype Impact Model","Calculates estimated avoidable cost and potential waste identified"),
-        ]
-        for icon, title, desc in features:
-            st.markdown(
-                f'<div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #163557">'
-                f'<span style="font-size:20px;flex-shrink:0">{icon}</span>'
-                f'<div><div style="font-weight:600;font-size:13px;color:#d8eeff">{title}</div>'
-                f'<div style="color:{MUTED};font-size:11px;margin-top:2px">{desc}</div>'
-                f'</div></div>', unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
 
-    with tab_evidence:
-        st.markdown('<div class="nabdcard">', unsafe_allow_html=True)
-        st.markdown(f'<div style="font-weight:700;font-size:15px;color:#d8eeff;margin-bottom:12px">📂 Current Evidence Available</div>', unsafe_allow_html=True)
-        evidence_items = [
-            ("✅","Working app prototype","Live Streamlit dashboard — viewable now"),
-            ("✅","Simulated campus water dataset","8-zone simulated UAE campus, 24h hourly data"),
-            ("✅","Anomaly detection outputs","3 flagged zones with abnormal usage in demo dataset"),
-            ("✅","AI-generated recommendations","Groq AI produces actionable insights based on zone data"),
-            ("✅","Prototype sustainability report","Auto-generated report with SDG 6 & Net Zero 2050 alignment"),
-            ("✅","Research poster & literature","Inter-university project with peer-reviewed citations"),
-            ("✅","Scientific business proposal","Detailed proposal with UAE water data and policy alignment"),
-            ("🔄","Real campus pilot data","Next stage — pending university facilities partnership"),
-            ("🔄","Verified real-world savings","Will be measured during campus pilot validation"),
-        ]
-        for icon, title, desc in evidence_items:
-            color = GREEN if icon=="✅" else YELLOW
-            st.markdown(
-                f'<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid rgba(22,53,87,0.5)">'
-                f'<span style="color:{color};font-size:14px;flex-shrink:0;margin-top:1px">{icon}</span>'
-                f'<div><div style="font-size:12px;font-weight:600;color:#d8eeff">{title}</div>'
-                f'<div style="color:{MUTED};font-size:11px;margin-top:1px">{desc}</div>'
-                f'</div></div>', unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE 2 — ZONE INTELLIGENCE
+# ══════════════════════════════════════════════════════════════════════════════
 
-    with tab_impact:
-        st.markdown('<div class="nabdcard">', unsafe_allow_html=True)
-        st.markdown(f'<div style="font-weight:700;font-size:15px;color:#d8eeff;margin-bottom:12px">📊 Current Impact Status</div>', unsafe_allow_html=True)
-        impact_data = {
-            "Impact Area": [
-                "Dashboard prototype",
-                "Water anomaly detection",
-                "Real campus water saved",
-                "Prototype-tested water waste identified",
-                "Real-world campus pilot",
-                "University / facility feedback",
-                "UAE policy alignment documented",
-                "AI insights generation",
-            ],
-            "Current Status": [
-                "✅ Completed",
-                "✅ Demonstrated with simulated data",
-                "🔄 Not yet verified — next pilot stage",
-                "✅ ~342 m³/week identified in simulation",
-                "🔄 Next validation stage",
-                "🔄 Pending — outreach in progress",
-                "✅ Mapped to UAE Water Strategy 2036 & Net Zero 2050",
-                "✅ Live with Groq AI integration",
-            ],
-        }
-        df_impact = pd.DataFrame(impact_data)
-        st.dataframe(df_impact, use_container_width=True, hide_index=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+elif "Zone Intelligence" in page:
+    st.markdown('<div class="page-title">Zone Intelligence</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-sub">Consumption baseline comparison and zone-level status analysis</div>', unsafe_allow_html=True)
+    disc("Zone statuses are derived from simulated baseline deviation logic. "
+         "Real deployment requires calibrated baselines from historical meter data.")
 
-        st.markdown(
-            f'<div style="background:rgba(255,179,71,0.07);border:1px solid rgba(255,179,71,0.3);'
-            f'border-radius:10px;padding:12px 16px;margin-top:4px">'
-            f'<div style="color:{YELLOW};font-weight:700;font-size:12px;margin-bottom:4px">&#128275; Honest Prototype Declaration</div>'
-            f'<div style="color:{MUTED};font-size:11px;line-height:1.6">'
-            f'All impact numbers in this prototype are <strong style="color:#d8eeff">estimates based on simulated data</strong>. '
-            f'The prototype demonstrates the detection model and reporting framework. '
-            f'Actual water savings and cost avoidance will only be measured and verified once the system '
-            f'is connected to real campus meter data during a formal pilot.</div>'
-            f'</div>', unsafe_allow_html=True)
+    sel = st.selectbox("Select Campus Zone", ZONES)
+    zdf = df[df["Zone"] == sel].copy()
+    zdf["Date"] = pd.to_datetime(zdf["Date"])
 
-    with tab_next:
-        st.markdown('<div class="nabdcard">', unsafe_allow_html=True)
-        st.markdown(f'<div style="font-weight:700;font-size:15px;color:#d8eeff;margin-bottom:12px">🚀 Next Validation Step</div>', unsafe_allow_html=True)
-        st.markdown(f"""
-<div style="color:#c8e6ff;font-size:13px;line-height:1.8">
-The next stage is to test NabdFlow with <strong>real campus meter data</strong> and collect feedback
-from a university facilities or sustainability team. The pilot plan includes:
-</div>
-        """, unsafe_allow_html=True)
-        steps = [
-            ("1","Partner with a UAE university facilities team","Identify one willing sustainability or facilities officer as pilot contact"),
-            ("2","Connect real meter data","Upload actual hourly m³ readings from 3–5 campus buildings via CSV"),
-            ("3","Run anomaly detection on real data","Compare NabdFlow outputs against known maintenance records"),
-            ("4","Measure actual vs. baseline","Track real m³ differences over 4 weeks"),
-            ("5","Collect qualitative feedback","Interview facilities manager on usefulness and accuracy"),
-            ("6","Publish pilot impact report","Document verified findings, limitations, and next development priorities"),
-        ]
-        for num, title, desc in steps:
-            st.markdown(
-                f'<div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(22,53,87,0.5)">'
-                f'<div style="width:26px;height:26px;border-radius:50%;background:rgba(0,200,255,0.15);border:1px solid rgba(0,200,255,0.4);'
-                f'display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:{ACCENT};flex-shrink:0">{num}</div>'
-                f'<div><div style="font-size:12px;font-weight:600;color:#d8eeff">{title}</div>'
-                f'<div style="color:{MUTED};font-size:11px;margin-top:2px">{desc}</div>'
-                f'</div></div>', unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+    z_total   = zdf["Actual_Consumption"].sum()
+    z_waste   = zdf["Avoidable_Waste_m3"].sum()
+    z_cost    = zdf["Avoidable_Cost_AED"].sum()
+    z_dev     = zdf["Deviation_Pct"].mean()
+    z_status  = zdf["Status"].value_counts().idxmax()
 
-        st.markdown(
-            f'<div style="background:rgba(0,229,160,0.06);border:1px solid rgba(0,229,160,0.25);'
-            f'border-radius:10px;padding:14px 18px;margin-top:8px">'
-            f'<div style="color:{GREEN};font-weight:700;font-size:12px;margin-bottom:4px">&#127919; UAE National Alignment</div>'
-            f'<div style="color:{MUTED};font-size:11px;line-height:1.7">'
-            f'NabdFlow supports the <strong style="color:#d8eeff">UAE Water Security Strategy 2036</strong> (20% per-capita demand reduction), '
-            f'<strong style="color:#d8eeff">UAE Net Zero 2050</strong> (reduced desalination energy), and '
-            f'<strong style="color:#d8eeff">UN SDG 6</strong> (Clean Water and Sanitation). '
-            f'A university campus pilot would provide direct evidence of AI-driven water efficiency in a UAE institutional context.'
-            f'</div></div>', unsafe_allow_html=True)
+    c1, c2, c3, c4 = st.columns(4)
+    with c1: st.markdown(kpi("30-Day Consumption", f"{z_total:.0f}", "m³"),         unsafe_allow_html=True)
+    with c2: st.markdown(kpi("Avg vs Baseline",    f"{z_dev:+.1f}", "%"),           unsafe_allow_html=True)
+    with c3: st.markdown(kpi("Est. Avoidable Waste",f"{z_waste:.0f}", "m³ *"),      unsafe_allow_html=True)
+    with c4: st.markdown(kpi("Est. Avoidable Cost", f"{z_cost:,.0f}", "AED *"),     unsafe_allow_html=True)
 
-# ============================================================
-# VIEW: ZONE INTELLIGENCE
-# ============================================================
-elif nav == "🗺️  Zone Intelligence":
-    prototype_badge()
-    st.markdown(f'<div style="color:{MUTED};font-size:12px;margin-bottom:14px">Which zone looks abnormal? Zones highlighted with orange/red borders require investigation.</div>', unsafe_allow_html=True)
-    zones_d  = get_zones()
-    cols_z   = st.columns(2)
-    for i, z in enumerate(zones_d):
-        delta = z["current"]-z["baseline"]
-        dp    = delta/max(z["baseline"],1)*100
-        ec    = eff_color(z["eff"])
-        bdr   = RED if z["status"]=="leak" else (YELLOW if z["status"] in ["anomaly","alert"] else "#163557")
-        with cols_z[i%2]:
-            st.markdown(
-                f'<div style="background:#0d1e38;border:1.5px solid {bdr};border-radius:12px;padding:18px;margin-bottom:12px">'
-                f'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">'
-                f'<div style="display:flex;align-items:center;gap:10px">'
-                f'<span style="font-size:24px">{z["icon"]}</span>'
-                f'<div><div style="font-weight:700;font-size:13px;color:#d8eeff">{z["name"]}</div>'
-                f'<div style="color:{MUTED};font-size:10px;margin-top:2px">Zone ID: {z["short"]} &middot; Simulated data</div></div>'
-                f'</div>{status_badge(z["status"])}</div>'
-                f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">'
-                f'<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:9px 11px">'
-                f'<div style="color:{MUTED};font-size:9px;text-transform:uppercase">Simulated Usage</div>'
-                f'<div style="color:#d8eeff;font-weight:800;font-size:20px">{z["current"]}<span style="font-size:10px;color:{MUTED}"> m\u00b3/day</span></div></div>'
-                f'<div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:9px 11px">'
-                f'<div style="color:{MUTED};font-size:9px;text-transform:uppercase">Above Baseline</div>'
-                f'<div style="color:{"#ff5272" if delta>0 else "#00e5a0"};font-weight:800;font-size:20px">'
-                f'{("+" if delta>0 else "")}{dp:.1f}<span style="font-size:10px">%</span></div></div></div>'
-                f'<div style="display:flex;justify-content:space-between;margin-bottom:5px">'
-                f'<span style="color:{MUTED};font-size:10px">Water Efficiency Score</span>'
-                f'<span style="font-size:11px;font-weight:700;color:{ec}">{z["eff"]}%</span></div>'
-                f'<div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px">'
-                f'<div style="width:{z["eff"]}%;height:100%;background:{ec};border-radius:3px"></div>'
-                f'</div></div>', unsafe_allow_html=True)
+    # Status explanation
+    explanations = {
+        "Normal":         ("#4ade80", "✅", "Consumption is within the expected operational range. No immediate action required."),
+        "Warning":        ("#fbbf24", "⚠️", "Consumption is moderately above baseline. Recommend monitoring and investigating possible inefficiencies."),
+        "Anomaly":        ("#f87171", "🔴", "Significant deviation from baseline detected. Facilities team should investigate potential equipment faults or occupancy changes."),
+        "Potential Leak": ("#ff4040", "🚨", "Persistent or after-hours high-usage pattern detected. This is an early warning signal — not a confirmed leak. Physical inspection of this zone is strongly recommended."),
+    }
+    color, icon, explanation = explanations.get(z_status, ("#8899aa", "ℹ️", ""))
+    st.markdown(f"""
+    <div style="background:#0c1e38;border:1px solid {color};border-radius:10px;padding:15px 18px;margin:14px 0">
+        <div style="font-weight:700;color:{color};margin-bottom:6px">{icon} Zone Status: {z_status}</div>
+        <div style="font-size:0.86rem;color:#b0c8e0">{explanation}</div>
+    </div>""", unsafe_allow_html=True)
 
-# ============================================================
-# VIEW: ANOMALY & ALERTS
-# ============================================================
-elif nav == "🚨  Anomaly & Alerts":
-    prototype_badge()
-    alerts_d = get_alerts()
-    active   = [a for a in alerts_d if a["sev"] not in ["resolved"]]
-    a1,a2,a3,a4 = st.columns(4)
-    a1.metric("Potential Alerts Total", str(len(alerts_d)))
-    a2.metric("Critical (Possible Leak) 🔴", str(len([a for a in alerts_d if a["sev"]=="critical"])))
-    a3.metric("High Anomaly 🟡",             str(len([a for a in alerts_d if a["sev"]=="high"])))
-    a4.metric("Active (Needs Check)",        str(len(active)))
-    st.markdown(f'<div style="color:{MUTED};font-size:11px;margin:10px 0 14px">Zones below have been flagged by the anomaly model. AED figures are estimated daily avoidable cost based on simulated data &mdash; not verified savings.</div>', unsafe_allow_html=True)
-    for a in alerts_d:
-        render_alert(a)
+    # Consumption chart
+    fig = go.Figure()
+    fig.add_trace(go.Bar(x=zdf["Date"], y=zdf["Baseline_Consumption"],
+                          name="Baseline", marker_color="#1e4a7a", opacity=0.75))
+    fig.add_trace(go.Scatter(x=zdf["Date"], y=zdf["Actual_Consumption"],
+                              name="Actual", line=dict(color="#00d4ff", width=2.2),
+                              mode="lines+markers", marker=dict(size=4.5)))
+    fig = chart_layout(fig, f"{sel} — Daily Consumption vs Baseline (m³)", 320)
+    st.plotly_chart(fig, use_container_width=True)
 
-# ============================================================
-# VIEW: AI INSIGHTS ENGINE
-# ============================================================
-elif nav == "🤖  AI Insights Engine":
-    prototype_badge()
-    st.markdown(
-        f'<div class="nabdcard"><div style="font-weight:700;font-size:14px">🤖 AI Water Intelligence Analysis</div>'
-        f'<div style="color:{MUTED};font-size:11px;margin-top:3px">Powered by Groq AI (llama-3.3-70b) &middot; Analysing simulated campus water data &middot; {len(get_zones())} zones</div>'
-        f'</div>', unsafe_allow_html=True)
+    # Deviation chart
+    c_map = zdf["Status"].map({k:v[0] for k,v in STATUS_COLORS.items()})
+    fig2 = go.Figure()
+    fig2.add_trace(go.Bar(x=zdf["Date"], y=zdf["Deviation_Pct"],
+                           marker_color=c_map, name="Deviation %"))
+    fig2.add_hline(y=15, line_dash="dash", line_color="#fbbf24",
+                   annotation_text="Warning +15%", annotation_font_color="#fbbf24")
+    fig2.add_hline(y=40, line_dash="dash", line_color="#f87171",
+                   annotation_text="Anomaly +40%", annotation_font_color="#f87171")
+    fig2.add_hline(y=0,  line_color="#162844", line_width=1)
+    fig2 = chart_layout(fig2, f"{sel} — Daily Deviation from Baseline (%)", 260)
+    st.plotly_chart(fig2, use_container_width=True)
 
-    if st.button("✨ Generate AI Insights", type="primary"):
-        st.session_state["insights"] = ""
-        with st.spinner("Analysing zones · Detecting patterns · Generating prototype insights..."):
-            prompt = (
-                "Analyse this simulated campus water data and provide actionable insights. "
-                "Remember: this is prototype/simulated data, so frame all findings as 'potential', 'estimated', or 'the simulation suggests'.\n\n"
-                "## What the Simulation Shows\n"
-                "Summarise the 3 most important patterns in the simulated data.\n\n"
-                "## Zones to Investigate First\n"
-                "Which zones show abnormal usage and what should the facilities team check?\n\n"
-                "## Estimated Potential Waste\n"
-                "How much water waste does the simulation identify, and what is the estimated daily cost?\n\n"
-                "## Recommended Actions for Facilities Team\n"
-                "3 specific, practical actions to investigate (not confirmed savings).\n\n"
-                "## How This Prototype Supports UAE Water Goals\n"
-                "Brief note on UAE Water Security Strategy 2036 and Net Zero 2050 alignment."
-            )
-            st.session_state["insights"] = call_ai([{"role":"user","content":prompt}])
-
-    if st.session_state["insights"]:
-        st.markdown('<div style="background:rgba(0,0,0,0.2);border:1px solid #163557;border-radius:10px;padding:20px">', unsafe_allow_html=True)
-        st.markdown(st.session_state["insights"])
-        st.markdown("</div>", unsafe_allow_html=True)
+    # High-risk all-zone summary
+    st.markdown('<div class="sec-header">⚡ High-Risk Zones (Campus-Wide)</div>', unsafe_allow_html=True)
+    hi = zone_agg[zone_agg["Last_Status"].isin(["Anomaly","Potential Leak"])].sort_values("Avg_Deviation", ascending=False)
+    if hi.empty:
+        st.success("No high-risk zones detected in the current dataset.")
     else:
-        st.markdown(f'<div style="text-align:center;padding:50px 20px;color:{MUTED}"><div style="font-size:48px;margin-bottom:12px">&#129504;</div><div style="font-size:14px;margin-bottom:6px;color:#d8eeff">AI Engine Ready</div><div style="font-size:12px">Click "Generate AI Insights" to analyse the simulated campus water data<br>and receive zone-specific recommendations.</div></div>', unsafe_allow_html=True)
+        for _, r in hi.iterrows():
+            c = STATUS_COLORS[r["Last_Status"]][0]
+            st.markdown(f"""
+            <div style="background:#150606;border-left:4px solid {c};border-radius:9px;
+                 padding:12px 16px;margin:6px 0;display:flex;justify-content:space-between;
+                 align-items:center;flex-wrap:wrap;gap:8px">
+                <div>
+                    <span style="font-weight:600;color:#dce8f5">{r['Zone']}</span>
+                    <span style="font-size:0.77rem;color:#5a7a9a;margin-left:10px">
+                        Avg deviation: {r['Avg_Deviation']:+.1f}%
+                    </span>
+                </div>
+                {badge(r['Last_Status'])}
+            </div>""", unsafe_allow_html=True)
 
-# ============================================================
-# VIEW: SUSTAINABILITY HUB
-# ============================================================
-elif nav == "🌿  Sustainability Hub":
-    prototype_badge()
-    weekly_d = get_weekly_df()
-    waste_wk = int(weekly_d["Saved"].sum()) if "Saved" in weekly_d.columns else 342
-    aed_wk   = int(weekly_d["AED"].sum())   if "AED"   in weekly_d.columns else 123
-    carbon_e = round(waste_wk * 0.0008, 2)
 
-    s1,s2,s3,s4,s5 = st.columns(5)
-    s1.metric("💧 Potential Waste Identified/Week", f"~{waste_wk} m\u00b3",     "Prototype estimate")
-    s2.metric("🌿 Est. Desalination Emissions",     f"~{carbon_e} t CO2eq",     "Prototype estimate")
-    s3.metric("🔍 Estimated Avoidable Cost/Week",   f"~{aed_wk} {currency()}",  "Prototype estimate")
-    s4.metric("🏆 SDG 6 Alignment",                 "Demonstrated",             "Clean Water goals")
-    s5.metric("🌍 Water Efficiency Score",           "78 / 100",                 "Simulated campus")
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE 3 — ALERT CENTER
+# ══════════════════════════════════════════════════════════════════════════════
 
-    st.markdown(f'<div style="background:rgba(167,139,250,0.06);border:1px solid rgba(167,139,250,0.25);border-radius:8px;padding:8px 14px;font-size:11px;color:{MUTED};margin-bottom:14px">All figures above are <strong style="color:#d8eeff">prototype estimates</strong> based on simulated UAE campus data. They demonstrate the model&apos;s capability to identify potential waste &mdash; not verified real-world savings.</div>', unsafe_allow_html=True)
+elif "Alert Center" in page:
+    st.markdown('<div class="page-title">Anomaly & Alert Center</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-sub">Prioritized investigation signals for facility and operations teams</div>', unsafe_allow_html=True)
+    disc("Alerts shown by NabdFlow indicate abnormal consumption patterns or possible leak-prone zones. "
+         "They should be treated as investigation signals, not confirmed leak diagnoses.")
 
-    st.markdown("")
-    ca, cb = st.columns(2)
+    n_leak    = zone_agg[zone_agg["Last_Status"] == "Potential Leak"].shape[0]
+    n_anomaly = zone_agg[zone_agg["Last_Status"] == "Anomaly"].shape[0]
+    n_warning = zone_agg[zone_agg["Last_Status"] == "Warning"].shape[0]
+
+    ca, cb, cc = st.columns(3)
     with ca:
-        fig_aed = go.Figure(go.Bar(x=weekly_d["Day"],y=weekly_d["AED"],marker_color=YELLOW,marker_opacity=0.85,marker_line_width=0))
-        fig_aed.update_layout(**BASE_LAYOUT,height=230,legend=L_DEFAULT)
-        st.markdown('<div class="nabdcard">', unsafe_allow_html=True)
-        st.markdown(f'<div style="font-weight:700;font-size:13px;margin-bottom:2px">Estimated Avoidable Cost per Day (Simulated)</div>', unsafe_allow_html=True)
-        st.markdown(f'<div style="color:{MUTED};font-size:10px;margin-bottom:4px">{currency()}/day &middot; Prototype estimates only</div>', unsafe_allow_html=True)
-        st.plotly_chart(fig_aed, use_container_width=True, config={"displayModeBar":False})
-        st.markdown("</div>", unsafe_allow_html=True)
-
+        st.markdown(f"""
+        <div style="background:linear-gradient(135deg,#1c0404,#120303);border:1px solid #5a1010;
+             border-radius:13px;padding:20px;text-align:center">
+            <div style="font-size:2rem;font-weight:700;color:#ff4040">{n_leak}</div>
+            <div style="font-size:0.78rem;color:#cc7070;text-transform:uppercase;margin-top:2px">Potential Leak Zones</div>
+            <div style="font-size:0.7rem;color:#7a4040;margin-top:4px">Immediate inspection recommended</div>
+        </div>""", unsafe_allow_html=True)
     with cb:
-        st.markdown('<div class="nabdcard">', unsafe_allow_html=True)
-        st.markdown(f'<div style="font-weight:700;font-size:13px;margin-bottom:14px">UAE Policy Alignment</div>', unsafe_allow_html=True)
-        for label, val, color in [
-            ("UAE Water Security Strategy 2036", 80, ACCENT),
-            ("UAE Net Zero 2050",                72, GREEN),
-            ("UN SDG 6 — Clean Water",           78, PURPLE),
-            ("Leak Detection Capability",        85, YELLOW),
-            ("Zone Coverage (Simulated)",       100, GREEN),
-        ]:
-            st.markdown(
-                f'<div style="margin-bottom:10px">'
-                f'<div style="display:flex;justify-content:space-between;margin-bottom:4px">'
-                f'<span style="font-size:11px;color:{MUTED}">{label}</span>'
-                f'<span style="font-size:11px;font-weight:700;color:{color}">{val}%</span></div>'
-                f'<div style="height:5px;background:rgba(255,255,255,0.06);border-radius:3px">'
-                f'<div style="width:{val}%;height:100%;background:{color};border-radius:3px"></div>'
-                f'</div></div>', unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown(f"""
+        <div style="background:linear-gradient(135deg,#1c0c04,#120804);border:1px solid #5a2010;
+             border-radius:13px;padding:20px;text-align:center">
+            <div style="font-size:2rem;font-weight:700;color:#f87171">{n_anomaly}</div>
+            <div style="font-size:0.78rem;color:#cc9080;text-transform:uppercase;margin-top:2px">Anomaly Zones</div>
+            <div style="font-size:0.7rem;color:#7a5040;margin-top:4px">Investigate consumption changes</div>
+        </div>""", unsafe_allow_html=True)
+    with cc:
+        st.markdown(f"""
+        <div style="background:linear-gradient(135deg,#1a1604,#121003);border:1px solid #5a3a08;
+             border-radius:13px;padding:20px;text-align:center">
+            <div style="font-size:2rem;font-weight:700;color:#fbbf24">{n_warning}</div>
+            <div style="font-size:0.78rem;color:#ccaa60;text-transform:uppercase;margin-top:2px">Warning Zones</div>
+            <div style="font-size:0.7rem;color:#7a6030;margin-top:4px">Monitor closely</div>
+        </div>""", unsafe_allow_html=True)
 
-    st.markdown("")
-    st.markdown(
-        f'<div class="nabdcard">'
-        f'<div style="font-weight:700;font-size:14px">📋 Prototype Sustainability Report</div>'
-        f'<div style="color:{MUTED};font-size:11px;margin-top:3px">AI-generated prototype report &middot; For Facilities Management review &middot; Uses simulated data</div>'
-        f'</div>', unsafe_allow_html=True)
+    st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
 
-    if st.button("📄 Generate Prototype Sustainability Report", type="primary"):
-        st.session_state["report"] = ""
-        with st.spinner("Compiling simulated data · Drafting prototype report..."):
-            zones_d = get_zones()
-            n_anom  = len([z for z in zones_d if z["status"]!="normal"])
-            prompt = (
-                f"Generate a PROTOTYPE Sustainability Report for a UAE university campus water intelligence pilot.\n\n"
-                f"IMPORTANT: This uses simulated data. Use language like 'estimated', 'potential', 'prototype-tested', 'simulation suggests'. "
-                f"Do NOT say 'verified savings' or 'confirmed reduction'.\n\n"
-                f"Report data (simulated):\n"
-                f"- Zones monitored: {len(zones_d)}\n"
-                f"- Potential anomalies detected: {n_anom}\n"
-                f"- Estimated potential waste identified: ~{waste_wk} m3/week\n"
-                f"- Estimated avoidable cost: ~{aed_wk} {currency()}/week\n"
-                f"- Estimated desalination-related emissions impact: ~{carbon_e} t CO2eq/week\n\n"
-                "Sections to include:\n"
-                "1. Prototype Report Summary (2-3 sentences, honest about prototype status)\n"
-                "2. Zones Monitored and Anomalies Detected\n"
-                "3. Potential Water Waste Identified (with prototype caveats)\n"
-                "4. Estimated Avoidable Cost (with prototype caveats)\n"
-                "5. UAE Water Security Strategy 2036 Alignment\n"
-                "6. UAE Net Zero 2050 Alignment\n"
-                "7. Recommended Facility Investigation Actions (not confirmed fixes)\n"
-                "8. Next Pilot Plan (what real data validation looks like)\n\n"
-                "End with a clear statement that these figures will be validated during a real campus pilot."
-            )
-            st.session_state["report"] = call_ai([{"role":"user","content":prompt}])
+    alert_meta = {
+        "Potential Leak": {
+            "css": "alert-leak", "color": "#ff4040",
+            "label": "🔴 HIGH PRIORITY",
+            "action": "Conduct an immediate physical inspection of water mains, fixtures, and pipes in this zone. Check for after-hours flow on automated metering if available.",
+        },
+        "Anomaly": {
+            "css": "alert-anomaly", "color": "#f87171",
+            "label": "🟠 MEDIUM PRIORITY",
+            "action": "Review usage logs and check for equipment changes, scheduled events, or significant occupancy shifts that could explain the spike.",
+        },
+        "Warning": {
+            "css": "alert-warning", "color": "#fbbf24",
+            "label": "🟡 LOW PRIORITY",
+            "action": "Monitor trend over the next 3–5 days. Escalate if deviation persists or worsens.",
+        },
+    }
 
-    if st.session_state["report"]:
-        st.markdown(f'<div style="background:rgba(0,0,0,0.2);border:1px solid #163557;border-radius:10px;padding:20px">', unsafe_allow_html=True)
-        st.markdown(st.session_state["report"])
-        st.markdown("</div>", unsafe_allow_html=True)
+    for status_type, meta in alert_meta.items():
+        flagged = zone_agg[zone_agg["Last_Status"] == status_type].sort_values("Avg_Deviation", ascending=False)
+        if flagged.empty:
+            continue
+        st.markdown(f'<div style="font-size:0.9rem;font-weight:600;color:{meta["color"]};margin:18px 0 8px">{meta["label"]}</div>',
+                    unsafe_allow_html=True)
+        for _, r in flagged.iterrows():
+            st.markdown(f"""
+            <div class="{meta['css']}">
+                <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:flex-start">
+                    <div style="flex:1;min-width:200px">
+                        <div style="font-weight:700;color:#dce8f5;font-size:0.95rem">{r['Zone']}</div>
+                        <div style="font-size:0.8rem;color:#7a9abb;margin-top:5px">
+                            Avg deviation: <b style="color:{meta['color']}">{r['Avg_Deviation']:+.1f}%</b>
+                            &nbsp;|&nbsp; Est. avoidable waste: <b style="color:#00d4ff">{r['Total_Waste']:.1f} m³ *</b>
+                            &nbsp;|&nbsp; Est. cost impact: <b style="color:#00d4ff">{r['Total_Cost']:,.0f} AED *</b>
+                        </div>
+                        <div style="background:rgba(255,255,255,0.04);border-radius:6px;
+                             padding:8px 12px;margin-top:10px;font-size:0.81rem;color:#9ab8d0">
+                            <b>Recommended Action:</b> {meta['action']}
+                        </div>
+                    </div>
+                </div>
+            </div>""", unsafe_allow_html=True)
 
-# ============================================================
-# VIEW: AI CHAT ASSISTANT
-# ============================================================
-elif nav == "💬  AI Chat Assistant":
-    prototype_badge()
-    st.markdown(f'<div class="nabdcard"><div style="font-weight:700;font-size:14px">💬 NabdFlow AI Assistant</div><div style="color:{MUTED};font-size:11px;margin-top:3px">Ask about simulated water usage, detected anomalies, potential savings, or recommended investigations</div></div>', unsafe_allow_html=True)
-    qc = st.columns(4)
-    for i, q in enumerate(["Which zone needs checking first?","How much waste is the simulation showing?","What should facilities investigate?","How does this support UAE Net Zero?"]):
-        if qc[i].button(q, key=f"qp_{i}"):
-            st.session_state["chat"].append({"role":"user","content":q})
-            with st.spinner("Thinking..."):
-                history = [{"role":m["role"],"content":m["content"]} for m in st.session_state["chat"]]
-                st.session_state["chat"].append({"role":"assistant","content":call_ai(history)})
-            st.rerun()
-    st.markdown("")
-    for m in st.session_state["chat"]:
-        with st.chat_message(m["role"], avatar="🤖" if m["role"]=="assistant" else "👤"):
-            st.markdown(m["content"])
-    if user_input := st.chat_input("Ask about campus water data..."):
-        st.session_state["chat"].append({"role":"user","content":user_input})
-        with st.chat_message("user", avatar="👤"):
-            st.markdown(user_input)
-        with st.chat_message("assistant", avatar="🤖"):
-            with st.spinner("Thinking..."):
-                reply = call_ai([{"role":m["role"],"content":m["content"]} for m in st.session_state["chat"]])
-            st.markdown(reply)
-        st.session_state["chat"].append({"role":"assistant","content":reply})
-        st.rerun()
+    # Timeline
+    st.markdown('<div class="sec-header">📅 Alert Timeline (30-Day View)</div>', unsafe_allow_html=True)
+    at = df[df["Status"] != "Normal"].groupby(["Date","Status"]).size().reset_index(name="Count")
+    cmap2 = {"Warning":"#fbbf24","Anomaly":"#f87171","Potential Leak":"#ff4040"}
+    fig = px.bar(at, x="Date", y="Count", color="Status", color_discrete_map=cmap2, barmode="stack")
+    fig = chart_layout(fig, "Daily Alert Events by Status Type", 270)
+    st.plotly_chart(fig, use_container_width=True)
 
-# ============================================================
-# VIEW: SETUP & DATA
-# ============================================================
-elif nav == "⚙️  Setup & Data":
-    tab_cfg, tab_upload, tab_sample = st.tabs(["🏫 Configuration","📁 Upload CSV Data","📄 Sample CSV & Format"])
 
-    with tab_cfg:
-        st.markdown('<div class="nabdcard">', unsafe_allow_html=True)
-        st.markdown(f'<div style="font-weight:700;font-size:14px;margin-bottom:14px">Campus Configuration</div>', unsafe_allow_html=True)
-        cfg2 = st.session_state["config"]
-        c1,c2 = st.columns(2)
-        with c1:
-            uni    = st.text_input("University / Project Name", value=cfg2["university"])
-            campus = st.text_input("Campus / Dataset Label",    value=cfg2["campus"])
-        with c2:
-            tariff_v = st.number_input("Water Tariff (per m\u00b3)", value=cfg2["tariff"], step=0.01, min_value=0.01)
-            curr     = st.selectbox("Currency", ["AED","USD","EUR","GBP","SAR","QAR"],
-                                    index=["AED","USD","EUR","GBP","SAR","QAR"].index(cfg2["currency"]))
-        st.markdown("</div>", unsafe_allow_html=True)
-        if st.button("💾 Save Configuration", type="primary"):
-            st.session_state["config"].update({"university":uni,"campus":campus,"tariff":tariff_v,"currency":curr})
-            st.success(f"Configuration saved!")
-            st.rerun()
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE 4 — AI INSIGHTS ENGINE
+# ══════════════════════════════════════════════════════════════════════════════
 
-    with tab_upload:
-        st.markdown('<div class="nabdcard">', unsafe_allow_html=True)
-        st.markdown(f'<div style="font-weight:700;font-size:14px;margin-bottom:4px">Upload Real Campus Meter Data</div>', unsafe_allow_html=True)
-        st.markdown(f'<div style="color:{MUTED};font-size:11px;margin-bottom:14px">Required columns: <code>zone</code>, <code>timestamp</code>, <code>consumption_m3</code>, <code>baseline_m3</code></div>', unsafe_allow_html=True)
-        uploaded = st.file_uploader("Choose CSV file", type=["csv"], label_visibility="collapsed")
+elif "AI Insights" in page:
+    st.markdown('<div class="page-title">AI Insights Engine</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-sub">Data-driven decision-support insights for facility and sustainability teams</div>', unsafe_allow_html=True)
+    disc("NabdFlow is currently in the validation stage. Insights are decision-support outputs generated from simulated data. "
+         "Verified findings require real meter data, facility team feedback, and pilot testing.")
+
+    leak_zones    = zone_agg[zone_agg["Last_Status"] == "Potential Leak"]["Zone"].tolist()
+    anomaly_zones = zone_agg[zone_agg["Last_Status"] == "Anomaly"]["Zone"].tolist()
+    top_waste_z   = zone_agg.loc[zone_agg["Total_Waste"].idxmax(), "Zone"]
+    total_waste   = df["Avoidable_Waste_m3"].sum()
+    total_cost    = df["Avoidable_Cost_AED"].sum()
+    priority_zone = leak_zones[0] if leak_zones else (anomaly_zones[0] if anomaly_zones else top_waste_z)
+
+    insights = [
+        {
+            "icon": "🔍",
+            "urg": "high",
+            "title": f"Priority Investigation Zone: {priority_zone}",
+            "body": (
+                f"{'This zone exhibits a persistent after-hours usage pattern that significantly exceeds its expected baseline — a common early signal of slow leaks, irrigation timer faults, or open water lines.'  if leak_zones else 'This zone records the highest average deviation from its expected baseline across the 30-day simulation window.'} "
+                "Physical inspection is the recommended first response."
+            ),
+            "action": "Assign the facilities team to conduct a site walkthrough and check for dripping fixtures, malfunctioning irrigation systems, or unclosed water lines. Log findings for pilot validation records.",
+        },
+        {
+            "icon": "💧",
+            "urg": "medium",
+            "title": f"Estimated Avoidable Waste: {total_waste:.0f} m³ over 30 Days",
+            "body": (
+                f"Based on baseline deviation analysis, an estimated {total_waste:.0f} m³ of water may represent avoidable consumption above the expected operational threshold. "
+                "This is a prototype estimate — real-world verification requires pilot validation with actual meter data."
+            ),
+            "action": f"Prioritize zones flagged as Anomaly or Potential Leak. Review each individually to distinguish between operational changes, occupancy spikes, and actual infrastructure issues.",
+        },
+        {
+            "icon": "💰",
+            "urg": "medium",
+            "title": f"Estimated Cost Impact: {total_cost:,.0f} AED over 30 Days",
+            "body": (
+                f"Applying a UAE municipal water tariff estimate of {WATER_TARIFF_AED} AED/m³, the estimated avoidable waste corresponds to approximately {total_cost:,.0f} AED. "
+                "These figures are indicative only and are based on simulated data."
+            ),
+            "action": "Use this figure as a preliminary justification for a pilot validation project. Present to facilities management and finance teams alongside the prototype methodology.",
+        },
+        {
+            "icon": "🕐",
+            "urg": "high" if leak_zones else "medium",
+            "title": "After-Hours Usage Patterns Detected",
+            "body": (
+                "Certain zones in the simulation show elevated consumption during expected non-operational hours. "
+                "This pattern is commonly associated with slow infrastructure leaks, irrigation timer misconfiguration, or HVAC condensate drainage faults."
+            ),
+            "action": "Cross-reference consumption timestamps with building occupancy and HVAC schedules. "
+                      "Consider installing automated post-hours flow alerts at the zone meter level during the pilot phase.",
+        },
+        {
+            "icon": "📊",
+            "urg": "low",
+            "title": f"Highest Estimated Waste Zone: {top_waste_z}",
+            "body": (
+                f"{top_waste_z} accounts for the largest share of estimated avoidable waste in this simulation. "
+                "This may reflect higher baseline activity, unmetered sub-zones, or water-intensive equipment operation patterns."
+            ),
+            "action": "Review operational schedules in this zone. Consider sub-meter installation or flow sensor deployment in the pilot phase to improve data granularity.",
+        },
+        {
+            "icon": "📈",
+            "urg": "low",
+            "title": "Baseline Calibration Recommendation",
+            "body": (
+                "In this prototype, baselines are set as fixed reference values per zone. "
+                "In a real deployment, baselines should be dynamically calibrated using historical data, segmented by weekday/weekend, occupancy, and UAE seasonal factors."
+            ),
+            "action": "During the pilot phase, collect at least 3 months of real meter data before establishing zone-specific consumption baselines. "
+                      "Segment by working/non-working hours and validate against facilities team knowledge.",
+        },
+    ]
+
+    urg_meta = {
+        "high":   ("insight-high",   "#ff4040", "🔴 High Priority"),
+        "medium": ("insight-medium", "#fbbf24", "🟡 Medium Priority"),
+        "low":    ("insight-low",    "#00d4ff", "🔵 Informational"),
+    }
+
+    for ins in insights:
+        css, color, label = urg_meta[ins["urg"]]
+        st.markdown(f"""
+        <div class="{css}">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+                <span style="font-size:1.25rem">{ins['icon']}</span>
+                <span style="font-weight:700;color:{color};font-size:0.92rem">{ins['title']}</span>
+                <span style="font-size:0.7rem;color:#3a5a7a;margin-left:auto">{label}</span>
+            </div>
+            <div style="font-size:0.84rem;color:#b0c8e0;line-height:1.65;margin-bottom:10px">{ins['body']}</div>
+            <div style="background:rgba(255,255,255,0.04);border-radius:7px;padding:9px 13px;
+                 font-size:0.81rem;color:#8aaac8">
+                <b style="color:#00d4ff">Recommended Action: </b>{ins['action']}
+            </div>
+        </div>""", unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE 5 — SUSTAINABILITY HUB
+# ══════════════════════════════════════════════════════════════════════════════
+
+elif "Sustainability Hub" in page:
+    st.markdown('<div class="page-title">Sustainability Hub</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-sub">Sustainability indicators, SDG alignment, and UAE national strategy mapping</div>', unsafe_allow_html=True)
+    disc("All sustainability indicators are estimated from simulated prototype data. "
+         "Verified contributions to UAE sustainability goals require pilot validation using real campus meter data.")
+
+    total_actual = df["Actual_Consumption"].sum()
+    total_waste  = df["Avoidable_Waste_m3"].sum()
+    total_cost   = df["Avoidable_Cost_AED"].sum()
+    co2_saving   = total_waste * CO2_FACTOR
+
+    c1, c2, c3 = st.columns(3)
+    with c1: st.markdown(kpi("Est. Avoidable Waste",       f"{total_waste:.0f}",  "m³ *"),    unsafe_allow_html=True)
+    with c2: st.markdown(kpi("Water Use Intensity",        f"{total_actual/30:.0f}", "m³/day *"), unsafe_allow_html=True)
+    with c3: st.markdown(kpi("Indicative CO₂-eq Savings",  f"{co2_saving:.0f}",  "kg *"),     unsafe_allow_html=True)
+
+    st.markdown('<div class="note-xs">* Prototype estimates. CO₂ factor: ~0.30 kg CO₂-eq per m³ (UAE desalination energy, indicative). All figures require pilot validation.</div>',
+                unsafe_allow_html=True)
+
+    # ── SDG Alignment
+    st.markdown('<div class="sec-header">🌍 SDG Alignment</div>', unsafe_allow_html=True)
+
+    sdgs = [
+        {
+            "num": "SDG 6", "name": "Clean Water and Sanitation", "color": "#1e88e5", "icon": "💧",
+            "target": "Target 6.4 — Substantially increase water-use efficiency across all sectors by 2030.",
+            "text": ("NabdFlow supports SDG 6 by equipping campus facility teams with tools to identify and "
+                     "reduce avoidable water waste, improving the efficiency of freshwater use in an already "
+                     "water-scarce UAE environment. Efficient campus water management is a direct, measurable "
+                     "contribution to this goal."),
+        },
+        {
+            "num": "SDG 11", "name": "Sustainable Cities and Communities", "color": "#fb8c00", "icon": "🏙️",
+            "target": "Target 11.6 — Reduce the environmental impact of cities, including resource consumption.",
+            "text": ("Smart campus water monitoring supports the development of data-driven, resource-efficient "
+                     "institutions — a foundational element of sustainable communities and smart city infrastructure. "
+                     "Universities as institutional hubs can model best practices for the broader urban environment."),
+        },
+        {
+            "num": "SDG 13", "name": "Climate Action", "color": "#43a047", "icon": "🌱",
+            "target": "Target 13.3 — Improve education, awareness, and institutional capacity on climate mitigation.",
+            "text": ("Water desalination in the UAE is highly energy-intensive. Reducing avoidable water consumption "
+                     "indirectly reduces carbon emissions. NabdFlow contributes to campus-level climate action "
+                     "through demand-side water efficiency and by building institutional data capacity for "
+                     "evidence-based sustainability decision-making."),
+        },
+    ]
+
+    for sdg in sdgs:
+        st.markdown(f"""
+        <div style="background:#0c1e38;border:1px solid #162844;border-radius:12px;padding:15px 18px;margin:8px 0">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:9px">
+                <span style="font-size:1.5rem">{sdg['icon']}</span>
+                <div>
+                    <div style="font-weight:700;color:{sdg['color']};font-size:0.92rem">{sdg['num']}: {sdg['name']}</div>
+                    <div style="font-size:0.72rem;color:#3a5a7a;margin-top:2px">{sdg['target']}</div>
+                </div>
+            </div>
+            <div style="font-size:0.84rem;color:#b0c8e0;line-height:1.65">{sdg['text']}</div>
+        </div>""", unsafe_allow_html=True)
+
+    # ── UAE Strategies
+    st.markdown('<div class="sec-header">🇦🇪 UAE National Strategy Alignment</div>', unsafe_allow_html=True)
+
+    strategies = [
+        {
+            "name": "UAE Water Security Strategy 2036",
+            "icon": "🌊", "color": "#00b4d8",
+            "text": ("NabdFlow aligns with the UAE's commitment to improving water-use efficiency and reducing "
+                     "non-revenue water loss across all sectors. By providing early detection of abnormal "
+                     "consumption patterns and actionable facility-team insights, the platform supports "
+                     "data-driven water stewardship at the institutional level — a key pillar of the 2036 strategy."),
+        },
+        {
+            "name": "UAE Net Zero 2050 Strategic Initiative",
+            "icon": "♻️", "color": "#4caf50",
+            "text": ("The UAE Net Zero 2050 strategy requires sector-wide reductions in resource consumption "
+                     "and associated emissions. University campuses, as significant energy and water consumers, "
+                     "have a direct role to play. NabdFlow's efficiency insights contribute to this national "
+                     "decarbonization pathway through campus-level demand-side water management."),
+        },
+    ]
+
+    for s in strategies:
+        st.markdown(f"""
+        <div style="background:#0c1e38;border-left:4px solid {s['color']};border-radius:10px;
+             padding:15px 18px;margin:8px 0">
+            <div style="font-weight:700;color:{s['color']};margin-bottom:8px">{s['icon']} {s['name']}</div>
+            <div style="font-size:0.84rem;color:#b0c8e0;line-height:1.65">{s['text']}</div>
+        </div>""", unsafe_allow_html=True)
+
+    # ── Evidence section
+    st.markdown('<div class="sec-header">📚 Evidence & Alignment Notes</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div style="background:#091628;border:1px solid #162844;border-radius:10px;
+         padding:15px 20px;font-size:0.82rem;color:#7a9abb;line-height:1.85">
+        <ul style="margin:0;padding-left:20px">
+            <li>AI and machine learning are increasingly applied to water network monitoring, anomaly detection,
+                and demand forecasting — supporting more efficient and adaptive infrastructure management worldwide.</li>
+            <li>The UAE ranks among the world's most water-scarce nations, with per-capita freshwater availability
+                far below the global average, making institutional efficiency a national security priority.</li>
+            <li>University campuses are significant water consumers, with substantial potential for demand-side
+                reduction through smart monitoring, occupancy-aware scheduling, and behavioral insights.</li>
+            <li>NabdFlow is currently in the pre-pilot prototype stage. All savings potential figures are
+                indicative and based on simulated data. They must not be used in formal sustainability
+                reporting until validated through a real-data pilot.</li>
+        </ul>
+    </div>""", unsafe_allow_html=True)
+
+    # ── Waste bar chart
+    st.markdown('<div class="sec-header">Estimated Avoidable Waste by Zone (Prototype, m³)</div>', unsafe_allow_html=True)
+    wbz = zone_agg[zone_agg["Total_Waste"] > 0].sort_values("Total_Waste")
+    fig = go.Figure(go.Bar(
+        x=wbz["Total_Waste"], y=wbz["Zone"],
+        orientation="h", marker=dict(color="#00d4ff", opacity=0.75),
+    ))
+    fig = chart_layout(fig, "", 280)
+    st.plotly_chart(fig, use_container_width=True)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE 6 — PILOT VALIDATION
+# ══════════════════════════════════════════════════════════════════════════════
+
+elif "Pilot Validation" in page:
+    st.markdown('<div class="page-title">Pilot Validation Plan</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-sub">Roadmap from simulated prototype to verified real-world deployment</div>', unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="background:linear-gradient(135deg,#0c1e38,#091628);border:1px solid #1e4a7a;
+         border-radius:13px;padding:20px 22px;margin-bottom:22px">
+        <div style="font-size:1.05rem;font-weight:700;color:#00d4ff;margin-bottom:10px">🎯 Pilot Objective</div>
+        <div style="font-size:0.88rem;color:#b0c8e0;line-height:1.75">
+            NabdFlow's pilot validation stage aims to transition the platform from a simulated-data prototype
+            to a data-verified, decision-ready operational tool. The pilot will establish real consumption
+            baselines, validate the anomaly detection methodology using actual meter readings, and generate
+            the first verified sustainability impact report — produced in collaboration with university
+            facility management and sustainability teams.
+        </div>
+    </div>""", unsafe_allow_html=True)
+
+    st.markdown('<div class="sec-header">📋 Pilot Execution Steps</div>', unsafe_allow_html=True)
+
+    steps = [
+        ("1", "Select Pilot Zone or Building",
+         "Identify one or two high-priority zones (e.g., Cafeteria & Dining or Science & Technology Block) based on data availability and meter accessibility."),
+        ("2", "Collect Historical Meter Data",
+         "Gather a minimum of 3–6 months of historical water meter readings from the selected zones. Coordinate with facilities management for data access and format specification."),
+        ("3", "Upload and Clean the Data",
+         "Import meter data into NabdFlow's data upload interface. Handle missing values, remove outliers, and standardize timestamps and consumption units (m³/day)."),
+        ("4", "Establish Consumption Baselines",
+         "Calculate zone-specific baselines using historical averages, segmented by weekday/weekend, working hours, and occupancy levels. Validate with the facilities team."),
+        ("5", "Run Anomaly Detection",
+         "Apply NabdFlow's deviation logic to flag abnormal consumption. Tune alert thresholds based on real-world data variability and facilities team domain knowledge."),
+        ("6", "Generate AI Recommendations",
+         "Produce structured insight reports for the facilities and sustainability teams, highlighting priority investigation zones and recommended corrective actions."),
+        ("7", "Review with Facilities and Sustainability Teams",
+         "Conduct a structured review session to validate flagged zones, assess recommendation relevance, and refine model sensitivity based on expert feedback."),
+        ("8", "Produce Pilot Impact Report",
+         "Document confirmed anomalies, verified waste reduction estimates, and stakeholder feedback in a structured impact report for university leadership."),
+        ("9", "Improve Model Based on Feedback",
+         "Incorporate review findings to refine baseline methodology, alert thresholds, and recommendation language ahead of broader campus rollout."),
+    ]
+
+    for num, title, desc in steps:
+        st.markdown(f"""
+        <div style="display:flex;gap:14px;margin:8px 0;align-items:flex-start">
+            <div style="background:#00d4ff;color:#060d1a;border-radius:50%;width:27px;height:27px;
+                 display:flex;align-items:center;justify-content:center;
+                 font-weight:700;font-size:0.82rem;flex-shrink:0;margin-top:3px">{num}</div>
+            <div style="background:#0c1e38;border:1px solid #162844;border-radius:10px;
+                 padding:12px 16px;flex:1">
+                <div style="font-weight:600;color:#dce8f5;font-size:0.9rem">{title}</div>
+                <div style="font-size:0.81rem;color:#5a7a9a;margin-top:4px;line-height:1.6">{desc}</div>
+            </div>
+        </div>""", unsafe_allow_html=True)
+
+    # Success metrics
+    st.markdown('<div class="sec-header">✅ Pilot Success Metrics</div>', unsafe_allow_html=True)
+
+    metrics_p = [
+        ("📂", "Data Readiness",
+         "Historical meter data successfully uploaded, cleaned, and formatted for at least one campus zone."),
+        ("📊", "Baseline Accuracy",
+         "Established baselines reflect real operational patterns with <15% unexplained variance."),
+        ("🚨", "Anomaly Detection Usefulness",
+         "At least one NabdFlow-flagged zone is confirmed by the facilities team as a genuine consumption irregularity."),
+        ("👥", "Facility Team Feedback",
+         "Formal feedback collected from facilities managers and sustainability officers on platform usefulness."),
+        ("📄", "Sustainability Report Quality",
+         "A pilot impact report is produced, reviewed, and signed off by university stakeholders."),
+        ("🚀", "Readiness for Scale-Up",
+         "Pilot findings are sufficient to justify expansion to additional zones or full-campus deployment."),
+    ]
+
+    left, right = st.columns(2)
+    for i, (icon, title, desc) in enumerate(metrics_p):
+        col = left if i % 2 == 0 else right
+        with col:
+            st.markdown(f"""
+            <div style="background:#0c1e38;border:1px solid #162844;border-radius:10px;
+                 padding:14px 16px;margin:6px 0">
+                <div style="font-size:0.88rem">{icon} <b style="color:#00d4ff">{title}</b></div>
+                <div style="font-size:0.79rem;color:#4a6a8a;margin-top:5px;line-height:1.55">{desc}</div>
+            </div>""", unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="background:#0c1e38;border-left:3px solid #4ade80;border-radius:8px;
+         padding:14px 18px;margin-top:22px;font-size:0.83rem;color:#5a7a9a;line-height:1.75">
+        <b style="color:#4ade80">Current Status:</b>
+        NabdFlow is in the pre-pilot prototype stage. The platform demonstrates technical feasibility and
+        decision-support potential using simulated UAE campus water data. Pilot validation with real meter
+        data is the next critical milestone before verified impact claims can be formally asserted.
+    </div>""", unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE 7 — DATA UPLOAD
+# ══════════════════════════════════════════════════════════════════════════════
+
+elif "Data Upload" in page:
+    st.markdown('<div class="page-title">Data Upload</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-sub">Upload a campus water meter CSV — or use the built-in simulated UAE campus dataset</div>', unsafe_allow_html=True)
+    disc("NabdFlow will apply the same anomaly detection and baseline comparison logic to any uploaded dataset. "
+         "Ensure your data includes the required columns listed below.")
+
+    c_info, c_up = st.columns([1, 1])
+
+    with c_info:
+        st.markdown("""
+        <div style="background:#0c1e38;border:1px solid #162844;border-radius:12px;padding:18px 20px">
+            <div style="font-weight:700;color:#00d4ff;margin-bottom:12px">📋 Required CSV Columns</div>
+            <table style="width:100%;font-size:0.82rem;color:#b0c8e0;border-collapse:collapse">
+                <tr style="border-bottom:1px solid #162844">
+                    <td style="padding:7px 0;color:#00d4ff;font-weight:600">Column</td>
+                    <td style="padding:7px 0;color:#00d4ff;font-weight:600">Description</td>
+                </tr>
+                <tr style="border-bottom:1px solid #0c1428"><td style="padding:5px 0">Zone</td><td>Campus zone or building name</td></tr>
+                <tr style="border-bottom:1px solid #0c1428"><td style="padding:5px 0">Date</td><td>Date in YYYY-MM-DD format</td></tr>
+                <tr style="border-bottom:1px solid #0c1428"><td style="padding:5px 0">Actual_Consumption</td><td>Measured water use (m³/day)</td></tr>
+                <tr><td style="padding:5px 0">Baseline_Consumption</td><td>Expected water use (m³/day)</td></tr>
+            </table>
+            <div style="margin-top:14px;font-size:0.8rem;color:#5a7a9a;font-weight:600">Optional Columns</div>
+            <div style="font-size:0.79rem;color:#3a5a7a;margin-top:5px;line-height:1.8">
+                Building_Type · Working_Hours · Occupancy · Notes
+            </div>
+            <div style="margin-top:14px;font-size:0.79rem;color:#3a5a7a;line-height:1.6">
+                If required columns are missing, NabdFlow will show a clear error message and fall back to simulated data.
+            </div>
+        </div>""", unsafe_allow_html=True)
+
+    with c_up:
+        uploaded = st.file_uploader("Upload CSV", type=["csv"],
+                                     help="Must contain Zone, Date, Actual_Consumption, Baseline_Consumption")
         if uploaded:
             try:
-                raw = pd.read_csv(uploaded)
-                st.markdown(f'<div style="color:{GREEN};font-size:12px;margin-bottom:8px">&#10003; File loaded: {len(raw)} rows, {raw["zone"].nunique() if "zone" in raw.columns else "?"} zones</div>', unsafe_allow_html=True)
-                st.dataframe(raw.head(10), use_container_width=True)
-                required = {"zone","timestamp","consumption_m3","baseline_m3"}
-                present  = set(raw.columns.str.strip().str.lower().str.replace(" ","_"))
-                missing  = required - present
-                if missing:
-                    st.error(f"Missing columns: {', '.join(missing)}")
+                udf = pd.read_csv(uploaded)
+                req = ["Zone", "Date", "Actual_Consumption", "Baseline_Consumption"]
+                missing_cols = [c for c in req if c not in udf.columns]
+
+                if missing_cols:
+                    st.error(f"❌ Missing required columns: **{', '.join(missing_cols)}**\n\n"
+                             "Please check your CSV format and re-upload.")
                 else:
-                    st.markdown("</div>", unsafe_allow_html=True)
-                    if st.button("⚡ Process & Apply Data", type="primary"):
-                        with st.spinner("Processing..."):
-                            zo, ho, wo, ao = process_csv(raw)
-                            st.session_state.update({"raw_df":raw,"zones_data":zo,"hourly_data":ho,"weekly_data":wo,"alerts_data":ao})
-                        st.success(f"Real data applied! {len(zo)} zones · {len(ao)} potential alerts detected")
-                        st.rerun()
-                    st.markdown('<div class="nabdcard" style="margin-top:0">', unsafe_allow_html=True)
+                    udf["Date"] = pd.to_datetime(udf["Date"]).dt.strftime("%Y-%m-%d")
+                    udf["_inject_leak"] = False
+                    udf = _add_derived_columns(udf)
+                    st.session_state.uploaded_data = udf
+                    st.success(f"✅ Uploaded successfully — {len(udf):,} rows, {udf['Zone'].nunique()} zones.")
+                    st.dataframe(udf.head(10), use_container_width=True)
             except Exception as e:
-                st.error(f"Error: {e}")
+                st.error(f"❌ Error reading file: {e}")
         else:
-            st.markdown(f'<div style="text-align:center;padding:30px;color:{MUTED}">Drop your meter data CSV here to run NabdFlow on real campus data</div>', unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-        if using_real_data():
-            if st.button("🗑️ Clear — Revert to Simulated Demo Data"):
-                for k in ["raw_df","zones_data","hourly_data","weekly_data","alerts_data"]:
-                    st.session_state[k] = None
+            mode = "Uploaded CSV" if st.session_state.uploaded_data is not None else "Simulated UAE Campus Data"
+            st.info(f"Active dataset: **{mode}**")
+            if st.session_state.uploaded_data is not None:
+                if st.button("🔄 Clear Uploaded Data & Restore Simulated Dataset"):
+                    st.session_state.uploaded_data = None
+                    st.rerun()
+
+    st.markdown('<div class="sec-header">Preview: Active Dataset (First 25 Rows)</div>', unsafe_allow_html=True)
+    display_cols = ["Zone", "Date", "Actual_Consumption", "Baseline_Consumption",
+                    "Deviation_Pct", "Status", "Avoidable_Waste_m3", "Avoidable_Cost_AED"]
+    st.dataframe(df[display_cols].head(25), use_container_width=True)
+
+    template_csv = generate_simulated_data()[["Zone", "Date", "Actual_Consumption", "Baseline_Consumption"]].to_csv(index=False)
+    st.download_button(
+        "⬇️ Download CSV Template (Simulated Data)",
+        template_csv,
+        file_name="nabdflow_template.csv",
+        mime="text/csv",
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE 8 — AI CHAT ASSISTANT
+# ══════════════════════════════════════════════════════════════════════════════
+
+elif "AI Chat" in page:
+    st.markdown('<div class="page-title">AI Chat Assistant</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-sub">Ask questions about campus water data — decision-support powered by NabdFlow</div>', unsafe_allow_html=True)
+    disc("The AI assistant answers based on the currently loaded prototype data only. "
+         "It does not access real-world water systems or external databases. "
+         "Responses are decision-support insights, not engineering diagnoses.")
+
+    # Context
+    leak_zones    = zone_agg[zone_agg["Last_Status"] == "Potential Leak"]["Zone"].tolist()
+    anomaly_zones = zone_agg[zone_agg["Last_Status"] == "Anomaly"]["Zone"].tolist()
+    warning_zones = zone_agg[zone_agg["Last_Status"] == "Warning"]["Zone"].tolist()
+    total_waste   = df["Avoidable_Waste_m3"].sum()
+    total_cost    = df["Avoidable_Cost_AED"].sum()
+    priority_zone = leak_zones[0] if leak_zones else (anomaly_zones[0] if anomaly_zones else "Main Academic Building")
+
+    def bot_response(q: str) -> str:
+        q = q.lower().strip()
+
+        if any(w in q for w in ["highest risk","most risk","riskiest","priority","inspect first","check first","dangerous"]):
+            if leak_zones:
+                z = zone_agg[zone_agg["Zone"] == leak_zones[0]].iloc[0]
+                return (f"🔴 **{leak_zones[0]}** is the highest-risk zone in the current prototype dataset.\n\n"
+                        f"It shows a persistent after-hours usage pattern with an average deviation of "
+                        f"**{z['Avg_Deviation']:+.1f}%** above baseline — a common early signal of slow leaks, "
+                        f"irrigation faults, or open water lines.\n\n"
+                        f"**Recommended action:** Assign the facilities team to physically inspect water supply "
+                        f"infrastructure, fixtures, and irrigation systems in this zone.\n\n"
+                        f"⚠️ *This is an investigation signal from prototype data, not a confirmed leak diagnosis.*")
+            elif anomaly_zones:
+                z = zone_agg[zone_agg["Zone"] == anomaly_zones[0]].iloc[0]
+                return (f"🟠 **{anomaly_zones[0]}** is the top priority zone, flagged as **Anomaly** "
+                        f"with an average deviation of **{z['Avg_Deviation']:+.1f}%** above baseline.\n\n"
+                        f"Physical inspection is recommended.\n\n"
+                        f"⚠️ *No zones are currently at Potential Leak status in this dataset.*")
+            return "✅ No high-risk zones detected. All zones are at Warning or Normal status. Continue monitoring."
+
+        if any(w in q for w in ["how much water","avoidable","waste","saved","save","reduction"]):
+            return (f"💧 Based on the 30-day prototype simulation, an estimated **{total_waste:.0f} m³** of "
+                    f"water represents potentially avoidable consumption above operational baselines.\n\n"
+                    f"At an indicative UAE tariff of {WATER_TARIFF_AED} AED/m³, this corresponds to an "
+                    f"estimated **{total_cost:,.0f} AED** in potential cost impact.\n\n"
+                    f"⚠️ *These are prototype estimates from simulated data only. Real-world savings require "
+                    f"pilot validation with actual campus meter readings before any formal claim can be made.*")
+
+        if any(w in q for w in ["facilities","team","do next","recommend","action","steps","what should"]):
+            actions = []
+            if leak_zones:
+                actions.append(f"1. 🔴 **Physically inspect {leak_zones[0]}** — highest priority, after-hours usage pattern flagged.")
+            if anomaly_zones:
+                actions.append(f"{'2' if leak_zones else '1'}. 🟠 **Investigate {', '.join(anomaly_zones)}** — significant baseline deviation detected.")
+            if warning_zones:
+                actions.append(f"{'3' if len(actions)==2 else '2' if len(actions)==1 else '1'}. 🟡 **Monitor {', '.join(warning_zones[:2])}** — above-baseline usage, watch for escalation.")
+            actions.append(f"{'4' if len(actions)==3 else str(len(actions)+1)}. 📊 **Begin pilot validation planning** — collect real meter data from at least one zone to start real-world verification.")
+            return ("**Recommended next steps for the facilities team:**\n\n" +
+                    "\n\n".join(actions) +
+                    "\n\n*All recommendations are derived from prototype simulation data. Treat as investigation starting points, not confirmed findings.*")
+
+        if "cafeteria" in q or "dining" in q:
+            row = zone_agg[zone_agg["Zone"] == "Cafeteria & Dining"].iloc[0]
+            return (f"🍽️ **Cafeteria & Dining** — Status: **{row['Last_Status']}** | "
+                    f"Avg deviation: **{row['Avg_Deviation']:+.1f}%** | "
+                    f"Est. avoidable waste: **{row['Total_Waste']:.0f} m³**\n\n"
+                    f"This zone showed elevated consumption on several simulated days, exceeding the anomaly threshold. "
+                    f"Possible causes include extended kitchen operations, dishwashing equipment outside normal hours, "
+                    f"or a simulated supply line issue.\n\n*Prototype insight — real-world verification required.*")
+
+        if "science" in q or "technology block" in q:
+            row = zone_agg[zone_agg["Zone"] == "Science & Technology Block"].iloc[0]
+            return (f"🔬 **Science & Technology Block** — Status: **{row['Last_Status']}** | "
+                    f"Avg deviation: **{row['Avg_Deviation']:+.1f}%**\n\n"
+                    f"This zone shows a gradual upward drift in the latter portion of the simulation window, "
+                    f"peaking at Potential Leak status. Lab cooling systems, equipment usage changes, or "
+                    f"infrastructure issues could explain this pattern.\n\n*Prototype insight — pilot validation required.*")
+
+        if "sport" in q or "gym" in q or "complex" in q:
+            row = zone_agg[zone_agg["Zone"] == "Sports Complex"].iloc[0]
+            return (f"🏟️ **Sports Complex** — Status: **{row['Last_Status']}** | "
+                    f"Avg deviation: **{row['Avg_Deviation']:+.1f}%**\n\n"
+                    f"This zone had elevated simulated usage during an event window (days 14–16). "
+                    f"Sports facilities often spike during competitions, open days, or deep-cleaning periods.\n\n"
+                    f"*Prototype insight — real-world calibration needed.*")
+
+        if "housing" in q or "residential" in q or "student" in q:
+            rows = zone_agg[zone_agg["Zone"].str.contains("Housing")]
+            lines = "\n".join([f"- **{r['Zone']}**: {r['Last_Status']}, avg dev {r['Avg_Deviation']:+.1f}%" for _, r in rows.iterrows()])
+            return (f"🏠 **Student Housing Zones:**\n\n{lines}\n\n"
+                    f"Student housing typically shows high but stable consumption. "
+                    f"Flagged deviations may reflect occupancy changes during exam periods or plumbing issues.\n\n"
+                    f"*Prototype insight — requires real data validation.*")
+
+        if any(w in q for w in ["efficiency score","score","efficiency"]):
+            ta = df["Actual_Consumption"].sum()
+            tw = df["Avoidable_Waste_m3"].sum()
+            score = max(0, min(100, round(100 - (tw / ta * 100), 1)))
+            return (f"📊 The current **Water Efficiency Score** for this prototype dataset is **{score} / 100**.\n\n"
+                    f"It is calculated as: 100 minus the percentage of total consumption estimated as avoidable waste. "
+                    f"A score of 100 would mean zero estimated avoidable waste.\n\n"
+                    f"*This is a prototype indicator. Real efficiency scoring requires validated baseline data.*")
+
+        if any(w in q for w in ["what is nabdflow","what does nabdflow","about","explain nabdflow"]):
+            return ("💧 **NabdFlow** means *the pulse of water flow*.\n\n"
+                    "'**Nabd**' (نبض) means pulse in Arabic — representing the live rhythm and heartbeat of campus "
+                    "water systems. '**Flow**' represents both the movement of water across campus zones and the "
+                    "flow of data from raw meter readings into insights, alerts, and sustainability reports.\n\n"
+                    "NabdFlow is an AI-powered campus water intelligence platform for UAE university campuses, "
+                    "helping facility teams and sustainability officers monitor consumption, detect abnormal "
+                    "patterns, and work toward verified water efficiency goals.")
+
+        if any(w in q for w in ["sdg","sustainable development","sustainability","net zero","uae strategy"]):
+            return ("🌍 **NabdFlow aligns with three SDGs and two UAE national strategies:**\n\n"
+                    "- **SDG 6** — Clean Water and Sanitation (water-use efficiency)\n"
+                    "- **SDG 11** — Sustainable Cities (smart, resource-efficient campuses)\n"
+                    "- **SDG 13** — Climate Action (indirect emissions reduction via water efficiency)\n\n"
+                    "**UAE Strategies:**\n"
+                    "- UAE Water Security Strategy 2036\n"
+                    "- UAE Net Zero 2050 Strategic Initiative\n\n"
+                    "*NabdFlow supports these goals through improved water-use efficiency after pilot validation.*")
+
+        # Fallback
+        return (f"🤖 Here's a quick data summary from the current prototype dataset:\n\n"
+                f"- **Potential Leak zones:** {', '.join(leak_zones) if leak_zones else 'None'}\n"
+                f"- **Anomaly zones:** {', '.join(anomaly_zones) if anomaly_zones else 'None'}\n"
+                f"- **Warning zones:** {', '.join(warning_zones) if warning_zones else 'None'}\n"
+                f"- **Est. avoidable waste:** {total_waste:.0f} m³ (30-day window)\n"
+                f"- **Est. cost impact:** {total_cost:,.0f} AED\n\n"
+                f"Try asking: *'Which zone has the highest risk?'* or *'What should the facilities team do next?'*\n\n"
+                f"⚠️ *This assistant answers only from simulated prototype data.*")
+
+    # Suggested questions
+    st.markdown('<div style="font-size:0.82rem;color:#4a6a8a;margin-bottom:8px">💡 Suggested questions:</div>',
+                unsafe_allow_html=True)
+    suggestions = [
+        "Which zone has the highest risk?",
+        "How much water could be avoided?",
+        "Which building needs inspection first?",
+        "Why was the Cafeteria flagged?",
+        "What should the facilities team do next?",
+    ]
+    cols = st.columns(len(suggestions))
+    for i, q in enumerate(suggestions):
+        with cols[i]:
+            if st.button(q, key=f"s_{i}", use_container_width=True):
+                st.session_state.chat_history.append({"role": "user",    "content": q})
+                st.session_state.chat_history.append({"role": "assistant","content": bot_response(q)})
                 st.rerun()
 
-    with tab_sample:
-        st.markdown('<div class="nabdcard">', unsafe_allow_html=True)
-        st.markdown(f'<div style="font-weight:700;font-size:14px;margin-bottom:10px">CSV Format Guide</div>', unsafe_allow_html=True)
-        st.markdown("| Column | Type | Required | Description |\n|---|---|---|---|\n| `zone` | text | ✅ | Building/zone name |\n| `timestamp` | datetime | ✅ | `YYYY-MM-DD HH:MM` |\n| `consumption_m3` | number | ✅ | Actual usage in m³ |\n| `baseline_m3` | number | ✅ | Expected/historical baseline m³ |")
-        st.markdown("</div>", unsafe_allow_html=True)
-        sample_df  = make_sample_csv()
-        csv_bytes  = sample_df.to_csv(index=False).encode()
-        st.download_button("⬇️ Download Sample CSV (6 zones · 24 hours)", csv_bytes, "nabdflow_sample.csv","text/csv")
-        st.markdown('<div class="nabdcard" style="margin-top:12px">', unsafe_allow_html=True)
-        st.dataframe(sample_df.head(12), use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+    # Chat history display
+    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+    for msg in st.session_state.chat_history:
+        if msg["role"] == "user":
+            st.markdown(f"""
+            <div style="display:flex;justify-content:flex-end;margin:7px 0">
+                <div class="chat-user">{msg['content']}</div>
+            </div>""", unsafe_allow_html=True)
+        else:
+            content = msg["content"].replace("\n", "<br>").replace("**", "<b>").replace("**", "</b>")
+            # Simple bold markdown
+            import re
+            content_html = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', msg["content"].replace("\n", "<br>"))
+            st.markdown(f"""
+            <div style="display:flex;gap:10px;margin:7px 0;align-items:flex-start">
+                <div style="background:#00d4ff;color:#060d1a;border-radius:50%;width:28px;height:28px;
+                     display:flex;align-items:center;justify-content:center;
+                     font-size:0.85rem;flex-shrink:0;margin-top:2px">💧</div>
+                <div class="chat-bot">{content_html}</div>
+            </div>""", unsafe_allow_html=True)
+
+    # Chat input
+    with st.form("chat_form", clear_on_submit=True):
+        col_i, col_b = st.columns([5, 1])
+        with col_i:
+            user_in = st.text_input("", placeholder="Ask about zones, alerts, recommendations...",
+                                     label_visibility="collapsed")
+        with col_b:
+            send = st.form_submit_button("Send", use_container_width=True)
+
+    if send and user_in.strip():
+        st.session_state.chat_history.append({"role": "user",    "content": user_in.strip()})
+        st.session_state.chat_history.append({"role": "assistant","content": bot_response(user_in.strip())})
+        st.rerun()
+
+    if st.button("🗑️ Clear Chat History"):
+        st.session_state.chat_history = []
+        st.rerun()
